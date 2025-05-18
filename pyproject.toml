@@ -1,0 +1,15 @@
+[build-system]
+requires = ["scikit-build-core", "cython", "numpy"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "patolette"
+dynamic = ["version"]
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "VERSION.txt"
+regex = '(?P<value>.+)'
+
+[tool.scikit-build]
+cmake.build-type = "Release"

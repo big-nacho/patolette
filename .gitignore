@@ -1,0 +1,11 @@
+.DS_Store
+.venv
+.idea
+.pytest_cache
+cmake-build-debug
+dist
+build
+out
+test
+tests
+**/*.supp
