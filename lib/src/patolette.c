@@ -118,9 +118,8 @@ patolette__QuantizationOptions *patolette_create_default_options() {
     patolette__QuantizationOptions *options = malloc(sizeof *options);
     options->dither = true;
     options->palette_only = false;
-    options->color_space = patolette__CIELuv;
-    options->heuristic = patolette__HeuristicPatolette;
-    options->kmeans_niter = 8;
+    options->color_space = patolette__ICtCp;
+    options->kmeans_niter = 32;
     options->kmeans_max_samples = SQ(512);
     options->bias = 0.005;
     return options;
@@ -144,14 +143,7 @@ patolette__QuantizationOptions *patolette_create_default_options() {
  *  - color_space: The color space to use for quantization. Only used for palette
  *                 generation; dithering is always performed in Linear Rec2020,
  *                 nearest neighbour mapping (when dithering is disabled) in ICtCp.
- *  - heuristic: Selection heuristic to use. It determines which cluster is to be split
- *               next during the quantization process. Wu is "purer" since it tries to
- *               minimize sums of squared deviations. Patolette adds a variance-based
- *               bias that helps with small, visually impactful areas that otherwise can
- *               end up being under-prioritized. The strength of the bias can be controlled
- *               via the "bias" parameter.
- *  - bias: Bias strength. It must be in the range [0, 1]. Doesn't have any effect
- *          if patolette__HeuristicWu is used as heuristic.
+ *  - bias: Bias strength. It must be in the range [0, 1].
  *  - kmeans_niter: Number of KMeans refinement iterations to perform.
  *  - kmeans_max_samples: Maximum number of samples to use when performing KMeans refinement.
  * @param palette_map A previously allocated array of length width * height.
@@ -190,7 +182,6 @@ void patolette(
     bool dither = options->dither;
     bool palette_only = options->palette_only;
     patolette__ColorSpace color_space = options->color_space;
-    patolette__Heuristic heuristic = options->heuristic;
     double bias = options->bias;
     int kmeans_niter = options->kmeans_niter;
     size_t kmeans_max_samples = options->kmeans_max_samples;
@@ -204,7 +195,7 @@ void patolette(
     if (color_space == patolette__CIELuv) {
         patolette__COLOR_sRGB_Matrix_to_CIELuv_Matrix(colors);
     }
-    else {
+    else if (color_space == patolette__ICtCp) {
         patolette__COLOR_sRGB_Matrix_to_ICtCp_Matrix(colors);
     }
 
@@ -225,7 +216,6 @@ void patolette(
         height,
         clusters,
         palette_size,
-        heuristic,
         bias
     );
 
@@ -258,9 +248,14 @@ void patolette(
                 patolette__COLOR_CIELuv_Matrix_to_Linear_Rec2020_Matrix(palette_colors);
             }
 
-            else {
+            else if (color_space == patolette__ICtCp) {
                 patolette__COLOR_ICtCp_Matrix_to_Linear_Rec2020_Matrix(colors);
                 patolette__COLOR_ICtCp_Matrix_to_Linear_Rec2020_Matrix(palette_colors);
+            }
+
+            else {
+                patolette__COLOR_sRGB_Matrix_to_Linear_Rec2020_Matrix(colors);
+                patolette__COLOR_sRGB_Matrix_to_Linear_Rec2020_Matrix(palette_colors);
             }
 
             patolette__DITHER_riemersma(

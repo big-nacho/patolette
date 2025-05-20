@@ -15,4 +15,3 @@ void patolette__COLOR_CIELuv_to_XYZ(
     double *z
 );
 void patolette__COLOR_sRGB_Matrix_to_CIELuv_Matrix(patolette__Matrix2D *sRGB);
-void patolette__COLOR_CIELuv_Matrix_to_Linear_Rec2020_Matrix(patolette__Matrix2D *Luv);

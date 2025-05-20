@@ -6,12 +6,9 @@ cimport numpy as cnp
 
 cdef extern from 'patolette.h':
     cpdef enum patolette__ColorSpace:
+        patolette__sRGB
         patolette__CIELuv
         patolette__ICtCp
-
-    cpdef enum patolette__Heuristic:
-        patolette__HeuristicWu
-        patolette__HeuristicPatolette
 
     ctypedef struct patolette__QuantizationOptions:
         bint dither
@@ -20,7 +17,6 @@ cdef extern from 'patolette.h':
         size_t kmeans_max_samples
         double bias
         patolette__ColorSpace color_space
-        patolette__Heuristic heuristic
 
     void patolette(
         size_t width,
@@ -35,10 +31,9 @@ cdef extern from 'patolette.h':
 
     const char *get_patolette_exit_code_info_message(int exit_code)
 
+ColorSpace_sRGB = patolette__ColorSpace.patolette__sRGB
 ColorSpace_CIELuv = patolette__ColorSpace.patolette__CIELuv
 ColorSpace_ICtCp = patolette__ColorSpace.patolette__ICtCp
-Heuristic_Wu = patolette__Heuristic.patolette__HeuristicWu
-Heuristic_Patolette = patolette__Heuristic.patolette__HeuristicPatolette
 
 color_mismatch = "The number of colors doesn't match the supplied width and height."
 bad_channel_count = 'Expected colors to be in sRGB[0, 1] space. Channel count mismatch: {} found.'
@@ -50,11 +45,10 @@ def quantize(
     size_t palette_size,
     bint dither = True,
     bint palette_only = False,
-    int kmeans_niter = 32,
-    size_t kmeans_max_samples = 512 ** 2,
+    patolette__ColorSpace color_space = patolette__ColorSpace.patolette__ICtCp,
     double bias = 0.005,
-    patolette__ColorSpace color_space = patolette__ColorSpace.patolette__CIELuv,
-    patolette__Heuristic heuristic = patolette__Heuristic.patolette__HeuristicPatolette
+    int kmeans_niter = 32,
+    size_t kmeans_max_samples = 512 ** 2
 ):
     shape = colors.shape
     color_count = shape[0]
@@ -83,7 +77,6 @@ def quantize(
     opts.kmeans_max_samples = kmeans_max_samples
     opts.bias = bias
     opts.color_space = color_space
-    opts.heuristic = heuristic
 
     cdef cython.double *data_pointer = cython.NULL
     cdef cython.double *palette_pointer = cython.NULL
@@ -159,8 +152,7 @@ def quantize(
 
 __all__ = [
     "quantize",
+    "ColorSpace_sRGB",
     "ColorSpace_CIELuv",
-    "ColorSpace_ICtCp",
-    "Heuristic_Wu",
-    "Heuristic_Patolette"
+    "ColorSpace_ICtCp"
 ]
