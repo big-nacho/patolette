@@ -8,13 +8,11 @@
 
 #include "quantize/cluster.h"
 #include "quantize/sort.h"
-#include "quantize/heuristics.h"
 
 patolette__ColorClusterArray *patolette__LQ_quantize(
     size_t width,
     size_t height,
     patolette__ColorClusterArray *clusters,
     size_t palette_size,
-    patolette__Heuristic heuristic,
     double bias
 );

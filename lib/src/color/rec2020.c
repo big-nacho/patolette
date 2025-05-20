@@ -172,6 +172,28 @@ void patolette__COLOR_CIELuv_Matrix_to_Linear_Rec2020_Matrix(patolette__Matrix2D
     }
 }
 
+void patolette__COLOR_sRGB_Matrix_to_Linear_Rec2020_Matrix(patolette__Matrix2D *sRGB) {
+/*----------------------------------------------------------------------------
+   Converts an sRGB color matrix to a Linear Rec2020 (RGB) color matrix.
+   The input matrix is modified.
+
+   @params
+   sRGB - The sRGB color matrix.
+-----------------------------------------------------------------------------*/
+    for (size_t i = 0; i < sRGB->rows; i++) {
+        double r = patolette__Matrix2D_index(sRGB, i, 0);
+        double g = patolette__Matrix2D_index(sRGB, i, 1);
+        double b = patolette__Matrix2D_index(sRGB, i, 2);
+
+        double r2020, g2020, b2020;
+        patolette__COLOR_sRGB_to_Linear_Rec2020(r, g, b, &r2020, &g2020, &b2020);
+
+        patolette__Matrix2D_index(sRGB, i, 0) = r2020;
+        patolette__Matrix2D_index(sRGB, i, 1) = g2020;
+        patolette__Matrix2D_index(sRGB, i, 2) = b2020;
+    }
+}
+
 /*----------------------------------------------------------------------------
    Exported functions END
 -----------------------------------------------------------------------------*/

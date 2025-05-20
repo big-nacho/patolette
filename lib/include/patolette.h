@@ -4,9 +4,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "quantize/heuristics.h"
-
 typedef enum patolette__ColorSpace {
+    patolette__sRGB,
     patolette__CIELuv,
     patolette__ICtCp
 } patolette__ColorSpace;
@@ -15,7 +14,6 @@ typedef struct patolette__QuantizationOptions {
     bool dither;
     bool palette_only;
     patolette__ColorSpace color_space;
-    patolette__Heuristic heuristic;
     double bias;
     int kmeans_niter;
     size_t kmeans_max_samples;

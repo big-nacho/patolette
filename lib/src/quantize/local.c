@@ -58,7 +58,6 @@ static size_t find_best_cluster_index(
     ClusterPairArray *children,
     size_t length,
     size_t palette_size,
-    patolette__Heuristic heuristic,
     double bias
 );
 
@@ -283,7 +282,6 @@ static size_t find_best_cluster_index(
     ClusterPairArray *children,
     size_t length,
     size_t palette_size,
-    patolette__Heuristic heuristic,
     double bias
 ) {
 /*----------------------------------------------------------------------------
@@ -294,7 +292,6 @@ static size_t find_best_cluster_index(
     children - A list containing each cluster's children.
     length - *Defined* portion of the clusters array (can have padding to the right).
     palette_size - The target palette size.
-    heuristic - The heuristic to use.
     bias - Bias strength.
 -----------------------------------------------------------------------------*/
     patolette__Vector *benefits = patolette__Vector_init(length);
@@ -313,13 +310,13 @@ static size_t find_best_cluster_index(
         patolette__Vector_index(variances, i) = patolette__ColorCluster_get_variance(cluster);
     }
 
-    if (heuristic == patolette__HeuristicPatolette) {
-        double weight = pow((double)length / (double)palette_size, 8);
-        size_t px_count = width * height;
+    if (bias > 0) {
+        size_t area = width * height;
+        double weight = pow((double)length / (double)max(palette_size, 256), 8);
         for (size_t i = 0; i < length; i++) {
             patolette__Vector_index(benefits, i) = (
                 (1 - weight) * patolette__Vector_index(benefits, i) +
-                weight * bias * (double)px_count * patolette__Vector_index(variances, i)
+                weight * bias * (double)area * patolette__Vector_index(variances, i)
             );
         }
     }
@@ -344,20 +341,17 @@ patolette__ColorClusterArray *patolette__LQ_quantize(
     size_t height,
     patolette__ColorClusterArray *clusters,
     size_t palette_size,
-    patolette__Heuristic heuristic,
     double bias
 ) {
 /*----------------------------------------------------------------------------
-    Splits a set of K color clusters into N > K color clusters under some
-    optimization heuristic.
+    Splits a set of K color clusters into N > K color clusters.
 
     @params
     width - The width of the image being quantized.
     height - The height of the image being quantized.
     clusters - The initial list of clusters.
     palette_size - The desired palette size (N).
-    heuristic - The heuristic to use.
-    bias - The bias strength (only applicable when heuristic = patolette__HeuristicPatolette)
+    bias - The bias strength.
 -----------------------------------------------------------------------------*/
     if (clusters->length >= palette_size) {
         return clusters;
@@ -380,7 +374,6 @@ patolette__ColorClusterArray *patolette__LQ_quantize(
             children,
             i,
             palette_size,
-            heuristic,
             bias
         );
 

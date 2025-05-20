@@ -3,8 +3,6 @@ from typing import Tuple, Optional
 
 ColorSpace_CIELuv: int
 ColorSpace_ICtCp: int
-Heuristic_Wu: int
-Heuristic_Patolette: int
 
 def quantize(
     width: int,
@@ -14,8 +12,7 @@ def quantize(
     dither: Optional[bool],
     palette_only: Optional[bool],
     kmeans_niter: Optional[int],
-    color_space: Optional[ColorSpace_CIELuv, ColorSpace_ICtCp],
-    heuristic: Optional[Heuristic_Wu, Heuristic_Patolette]
+    color_space: Optional[ColorSpace_CIELuv, ColorSpace_ICtCp]
 ) -> int:
     """
     Quantizes color data.
