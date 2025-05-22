@@ -4,55 +4,12 @@ set(PROJECT_NAME patolette)
 file(READ VERSION.txt PROJECT_VERSION)
 project(${PROJECT_NAME} VERSION ${PROJECT_VERSION} LANGUAGES C CXX)
 
+option(PATOLETTE_USE_ACCELERATE "On macOS, use Apple's Accelerate framework" OFF)
+
+set(BUILD_SHARED_LIBS ON)
+
 if (CMAKE_BUILD_TYPE STREQUAL "")
   set(CMAKE_BUILD_TYPE "Release")
-endif()
-
-if (DEFINED SKBUILD)
-  # If SKBUILD is on, we're building a Python extension module
-  set(SKBUILD ON)
-endif()
-
-option(OPENBLAS_FORCE "Force the usage of OpenBLAS" OFF)
-option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
-option(OPENBLAS_HOME "Home directory of OpenBLAS" OFF)
-
-if (SKBUILD AND NOT BUILD_SHARED_LIBS)
-  set(BUILD_SHARED_LIBS ON)
-endif()
-
-if (OPENBLAS_HOME)
-  file(TO_CMAKE_PATH ${OPENBLAS_HOME} OPENBLAS_HOME)
-  set(OPENBLAS_LIB_SEARCH_PATHS ${OPENBLAS_HOME}/lib)
-  set(OPENBLAS_HEADERS_SEARCH_PATHS ${OPENBLAS_HOME}/include)
-else()
-  set(OPENBLAS_LIB_SEARCH_PATHS
-    /usr/lib
-    /usr/local/lib
-    /usr/local/opt/openblas/lib
-    /opt/homebrew/opt/openblas/lib
-    /usr/lib/x86_64-linux-gnu
-  )
-
-  set(OPENBLAS_HEADERS_SEARCH_PATHS
-    /usr/include
-    /usr/include/openblas
-    /usr/local/include
-    /usr/local/include/openblas
-    /usr/local/opt/openblas/include
-    /opt/homebrew/opt/openblas/include
-    /usr/include/x86_64-linux-gnu
-  )
-endif()
-
-set(OPENBLAS_HEADERS_NAMES cblas.h lapack.h)
-
-if (BUILD_SHARED_LIBS)
-  set(OPENBLAS_LIB_NAMES libopenblas.dylib libopenblas.so)
-  set(OPENBLAS_WIN_LIB_NAMES libopenblas.dll)
-else()
-  set(OPENBLAS_LIB_NAMES libopenblas.a)
-  set(OPENBLAS_WIN_LIB_NAMES libopenblas.dll.a)
 endif()
 
 set(
@@ -66,27 +23,31 @@ set(
   lib/src/array/vector.c
 
   lib/src/color/CIELuv.c
+  lib/src/color/rec2020.c
+  lib/src/color/sRGB.c
+  lib/src/color/ICtCp.c
+  lib/src/color/xyz.c
+  lib/src/color/eotf.c
 
-        lib/src/dither/riemersma.c
+  lib/src/dither/riemersma.c
 
   lib/src/math/eigen.c
   lib/src/math/pca.c
+
+  lib/src/palette/create.c
+  lib/src/palette/nearest.c
+  lib/src/palette/refine.c
 
   lib/src/quantize/cells.c
   lib/src/quantize/cluster.c
   lib/src/quantize/global.c
   lib/src/quantize/local.c
   lib/src/quantize/sort.c
-
-  lib/src/palette/nearest.c
-  lib/src/color/rec2020.c
-  lib/src/color/sRGB.c
-  lib/src/color/ICtCp.c
-  lib/src/color/xyz.c
-  lib/src/color/eotf.c
-  lib/src/palette/refine.c
-        lib/src/palette/create.c
 )
+
+if (DEFINED SKBUILD)
+  set(SKBUILD ON)
+endif()
 
 if (SKBUILD)
   # Building Python extension module
@@ -119,7 +80,7 @@ if (SKBUILD)
   if (Python_NumPy_FOUND)
     # Include numpy headers for cimports in patolette.pyx
     target_compile_definitions(${PROJECT_NAME} PRIVATE NPY_NO_DEPRECATED_API)
-    target_include_directories(${PROJECT_NAME} PRIVATE ${Python_NumPy_INCLUDE_DIRS})
+    target_include_directories(${PROJECT_NAME} PRIVATE "${Python_NumPy_INCLUDE_DIRS}")
   else()
     message(FATAL_ERROR "Could not find NumPy headers")
   endif()
@@ -149,71 +110,36 @@ endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE lib/include)
 
-set(BLAS_FOUND OFF)
-
-if (APPLE AND NOT OPENBLAS_FORCE)
-    # Try to use Apple's Accelerate framework as BLAS implementation
-    find_library(ACCELERATE_FRAMEWORK Accelerate)
-    if(ACCELERATE_FRAMEWORK)
-        set(BLAS_FOUND ON)
-        message("BLAS Implementation: Apple's Accelerate framework")
-        message("BLAS Implementation located at: ${ACCELERATE_FRAMEWORK}")
-        target_compile_definitions(${PROJECT_NAME} PRIVATE PATOLETTE_USE_ACCELERATE)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE ACCELERATE_NEW_LAPACK)
-        target_link_libraries(${PROJECT_NAME} PRIVATE ${ACCELERATE_FRAMEWORK})
-    endif()
-endif()
-
-if (NOT BLAS_FOUND)
-  # Try to link against OPENBLAS
-
-  find_path(OPENBLAS_HEADERS
-    NAMES ${OPENBLAS_HEADERS_NAMES}
-    PATHS ${OPENBLAS_HEADERS_SEARCH_PATHS}
-    NO_DEFAULT_PATH
-  )
-
-  find_library(OPENBLAS_LIB
-    NAMES ${OPENBLAS_LIB_NAMES}
-    PATHS ${OPENBLAS_LIB_SEARCH_PATHS}
-    NO_DEFAULT_PATH
-  )
-
-  if (NOT OPENBLAS_LIB)
-    find_library(OPENBLAS_LIB
-      NAMES ${OPENBLAS_WIN_LIB_NAMES}
-      PATHS ${OPENBLAS_LIB_SEARCH_PATHS}
-    )
-  endif()
-
-  if (OPENBLAS_LIB AND OPENBLAS_HEADERS)
-    set(BLAS_FOUND ON)
-  endif()
-
-  if (BLAS_FOUND)
-    message("BLAS Implementation: OpenBLAS")
-    message("BLAS Headers located at: ${OPENBLAS_HEADERS}")
-    message("BLAS Implementation located at: ${OPENBLAS_LIB}")
-    include_directories(${OPENBLAS_HEADERS})
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENBLAS_LIB})
+set(BLA_VENDOR "OpenBLAS")
+if (APPLE)
+  if (PATOLETTE_USE_ACCELERATE)
+    set(BLA_VENDOR "Apple")
   else()
-    if (NOT OPENBLAS_LIB)
-      message("Could not locate OpenBLAS library")
+    # find_package(BLAS) doesn't take care of include
+    # directories because typically they're not needed.
+    # But we make use of cblas.h and lapack.h from OpenBLAS,
+    # so it needs to be handled. For now, the path is hardcoded
+    # and assumes a brew installation of OpenBLAS.
+    set(OPENBLAS_INCLUDE_DIR "/opt/homebrew/opt/openblas/include")
+    if(EXISTS "${OPENBLAS_INCLUDE_DIR}")
+      target_include_directories(${PROJECT_NAME} PRIVATE "${OPENBLAS_INCLUDE_DIR}")
+    else()
+      message(FATAL_ERROR "OpenBLAS include directory not found at ${OPENBLAS_INCLUDE_DIR}")
     endif()
-    if (NOT OPENBLAS_HEADERS)
-      message("Could not locate OpenBLAS headers")
-    endif()
-    message(FATAL_ERROR "BLAS implementation not found")
   endif()
-
-  find_package(OpenMP REQUIRED)
-  target_link_libraries(${PROJECT_NAME} PRIVATE OpenMP::OpenMP_C)
 endif()
 
-# Try to link against FLANN
+if (UNIX)
+  find_package(BLAS REQUIRED)
+  target_link_libraries(${PROJECT_NAME} PRIVATE BLAS::BLAS)
+endif()
+
+if (WIN32)
+  # TODO
+endif()
+
 find_package(FLANN REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE flann::flann)
-target_include_directories(${PROJECT_NAME} PRIVATE ${FLANN_INCLUDE_DIRS})
 
 set(FAISS_ENABLE_C_API ON)
 set(FAISS_ENABLE_GPU OFF)
