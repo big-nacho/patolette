@@ -27,15 +27,13 @@ static const int success = 0;
 static const int bad_quant = -1;
 static const int bad_dims = -2;
 static const int bad_palette_size = -3;
-static const int bad_bias = -4;
-static const int huge_dims = -5;
+static const int huge_dims = -4;
 
 static const char *exit_code_info_messages[6] = {
     "Quantization successful.\0",
     "Internal quantization error.\0",
     "Image dimensions should be greater than 0.\0",
     "Palette size should be greater than 0.\0",
-    "Bias should be in the range [0, 1].\0",
     "Image dimensions are too big.\0",
 };
 
@@ -80,7 +78,6 @@ static void validate_arguments(
     *exit_code = 0;
 
     size_t px_count = width * height;
-    double bias = options->bias;
 
     if (px_count == 0) {
         *exit_code = bad_dims;
@@ -90,10 +87,6 @@ static void validate_arguments(
     if (palette_size < 1) {
         *exit_code = bad_palette_size;
         return;
-    }
-
-    if (bias < 0 || bias > 1) {
-        *exit_code = bad_bias;
     }
 
     if (width * height > 40000 * 40000) {
@@ -121,7 +114,6 @@ patolette__QuantizationOptions *patolette_create_default_options() {
     options->color_space = patolette__ICtCp;
     options->kmeans_niter = 32;
     options->kmeans_max_samples = SQ(512);
-    options->bias = 0.005;
     return options;
 }
 
@@ -130,10 +122,12 @@ patolette__QuantizationOptions *patolette_create_default_options() {
  *
  * @param width The width of the image.
  * @param height The height of the image.
- * @param data A (width * height, 3) matrix containing the image colors,
+ * @param color_data A (width * height, 3) matrix containing the image colors,
  *             scanned from left-to-right, top-to-bottom in sRGB[0, 1] space. The matrix
  *             must be stored column-major, i.e all red values come first, followed by all
  *             green values, followed by all blue values.
+ * @param weight_data The weight of each color. All weights are expected to be in the
+ *             range [1, inf].
  * @param palette_size The desired palette size, or the number of colors to
  *                     quantize the image to.
  * @param options Quantization options.
@@ -143,8 +137,8 @@ patolette__QuantizationOptions *patolette_create_default_options() {
  *  - color_space: The color space to use for quantization. Only used for palette
  *                 generation; dithering is always performed in Linear Rec2020,
  *                 nearest neighbour mapping (when dithering is disabled) in ICtCp.
- *  - bias: Bias strength. It must be in the range [0, 1].
- *  - kmeans_niter: Number of KMeans refinement iterations to perform.
+ *  - kmeans_niter: Number of KMeans refinement iterations to perform. Anything <= 0 yields no KMeans
+                    refinement.
  *  - kmeans_max_samples: Maximum number of samples to use when performing KMeans refinement.
  * @param palette_map A previously allocated array of length width * height.
  *                    The palette map is written here.
@@ -160,7 +154,8 @@ patolette__QuantizationOptions *patolette_create_default_options() {
 void patolette(
     size_t width,
     size_t height,
-    const double *data,
+    const double *color_data,
+    const double *weight_data,
     size_t palette_size,
     const patolette__QuantizationOptions *options,
     double *palette,
@@ -182,25 +177,34 @@ void patolette(
     bool dither = options->dither;
     bool palette_only = options->palette_only;
     patolette__ColorSpace color_space = options->color_space;
-    double bias = options->bias;
     int kmeans_niter = options->kmeans_niter;
     size_t kmeans_max_samples = options->kmeans_max_samples;
 
     patolette__Matrix2D *colors = patolette__Matrix2D_init(
         width * height,
         3,
-        data
+        color_data
     );
+
+    patolette__Vector *weights = NULL;
+    if (weight_data != NULL) {
+        weights = patolette__Vector_init(width * height);
+        for (size_t i = 0; i < weights->length; i++) {
+            patolette__Vector_index(weights, i) = weight_data[i];
+        }
+    }
 
     if (color_space == patolette__CIELuv) {
         patolette__COLOR_sRGB_Matrix_to_CIELuv_Matrix(colors);
     }
+
     else if (color_space == patolette__ICtCp) {
         patolette__COLOR_sRGB_Matrix_to_ICtCp_Matrix(colors);
     }
 
     patolette__ColorClusterArray *clusters = patolette__GQ_quantize(
         colors,
+        weights,
         palette_size
     );
 
@@ -212,11 +216,8 @@ void patolette(
     }
 
     clusters = patolette__LQ_quantize(
-        width,
-        height,
         clusters,
-        palette_size,
-        bias
+        palette_size
     );
 
     if (clusters == NULL) {
@@ -230,6 +231,7 @@ void patolette(
     if (kmeans_niter > 0) {
         palette_colors = patolette__PALETTE_get_refined_palette(
             colors,
+            weights,
             clusters,
             kmeans_niter,
             kmeans_max_samples
@@ -307,4 +309,5 @@ void patolette(
 
     patolette__Matrix2D_destroy(colors);
     patolette__Matrix2D_destroy(palette_colors);
+    patolette__Vector_destroy(weights);
 }

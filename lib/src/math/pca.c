@@ -3,9 +3,7 @@
 /*----------------------------------------------------------------------------
     This file defines functions to perform PCA (principal component analysis).
 
-    Only the variance-covariance matrix multiplication is implemented via a
-    BLAS routine, but the rest of the functions could also be adapted if needed
-    (for better performance).
+    TODO: use as many BLAS routines as possible
 -----------------------------------------------------------------------------*/
 
 
@@ -13,8 +11,15 @@
     Declarations START
 -----------------------------------------------------------------------------*/
 
-static patolette__Matrix2D *get_mean_centered_matrix(const patolette__Matrix2D *m);
-static patolette__Matrix2D *get_vcov(const patolette__Matrix2D *m);
+static patolette__Matrix2D *get_mean_centered_matrix(
+    const patolette__Matrix2D *m,
+    const patolette__Vector *weights
+);
+
+static patolette__Matrix2D *get_vcov(
+    const patolette__Matrix2D *m,
+    const patolette__Vector *weights
+);
 
 /*----------------------------------------------------------------------------
     Declarations END
@@ -25,18 +30,22 @@ static patolette__Matrix2D *get_vcov(const patolette__Matrix2D *m);
     Internal functions START
 -----------------------------------------------------------------------------*/
 
-static patolette__Matrix2D *get_mean_centered_matrix(const patolette__Matrix2D *m) {
+static patolette__Matrix2D *get_mean_centered_matrix(
+    const patolette__Matrix2D *m,
+    const patolette__Vector *weights
+) {
 /*----------------------------------------------------------------------------
     Performs column-wise centering on a Matrix2D.
     The input Matrix2D is not modified.
 
     @param
     m - The Matrix2D.
+    weights - The weight of each row.
 -----------------------------------------------------------------------------*/
     size_t rows = m->rows;
     size_t cols = m->cols;
 
-    patolette__Vector *mean = patolette__Matrix2D_get_vector_mean(m);
+    patolette__Vector *mean = patolette__Matrix2D_get_vector_mean(m, weights);
     patolette__Matrix2D *centered = patolette__Matrix2D_copy(m);
 
     for (size_t j = 0; j < cols; j++) {
@@ -50,44 +59,43 @@ static patolette__Matrix2D *get_mean_centered_matrix(const patolette__Matrix2D *
     return centered;
 }
 
-static patolette__Matrix2D *get_vcov(const patolette__Matrix2D *m) {
+patolette__Matrix2D *get_vcov(
+    const patolette__Matrix2D *m,
+    const patolette__Vector *weights
+) {
 /*----------------------------------------------------------------------------
-    Gets the variance-covariance matrix of a Matrix2D.
-    The input matrix is not modified. The output matrix's upper triangle
-    is not populated.
+    Gets the weighted variance-covariance matrix of a Matrix2D.
+    The input matrix is not modified.
 
     @param
-    m - The Matrix2D.
+    m - A Matrix2D treated as a set of samples. Each row a sample,
+    each column a feature. In our case, columns represent color channels,
+    rows represent colors.
+    weights - The weight of each color.
 -----------------------------------------------------------------------------*/
     size_t rows = m->rows;
     size_t cols = m->cols;
 
-    patolette__Matrix2D *centered = get_mean_centered_matrix(m);
+    patolette__Matrix2D *centered = get_mean_centered_matrix(m, weights);
     patolette__Matrix2D *vcov = patolette__Matrix2D_init(cols, cols, NULL);
 
-    blasint n = (blasint)cols;
-    blasint k = (blasint)rows;
-    double alpha = 1 / (double)(rows - 1);
-    double *a = centered->data;
-    blasint lda = (blasint)rows;
-    blasint ldc = (blasint)cols;
-    double *c = vcov->data;
+    double w_sum = weights == NULL ? (double)rows : patolette__Vector_sum(weights);
 
-    cblas_dsyrk(
-        CblasColMajor,
-        CblasLower,
-        CblasTrans,
-        n,
-        k,
-        alpha,
-        a,
-        lda,
-        0,
-        c,
-        ldc
-    );
+    for (size_t j = 0; j < cols; j++) {
+        for (size_t k = 0; k < cols; k++) {
 
-    patolette__Matrix2D_destroy(centered);
+            double value = 0;
+            for (size_t i = 0; i < rows; i++) {
+                double weight = weights == NULL ? 1 : patolette__Vector_index(weights, i);
+                double cij = patolette__Matrix2D_index(centered, i, j);
+                double cik = patolette__Matrix2D_index(centered, i, k);
+                value += weight * cij * cik;
+            }
+
+            patolette__Matrix2D_index(vcov, j, k) = value / w_sum;
+        }
+    }
+
     return vcov;
 }
 
@@ -139,7 +147,10 @@ patolette__PCA *patolette__PCA_perform_PCA_vcov(patolette__Matrix2D *vcov) {
     return result;
 }
 
-patolette__PCA *patolette__PCA_perform_PCA(const patolette__Matrix2D *m) {
+patolette__PCA *patolette__PCA_perform_PCA(
+    const patolette__Matrix2D *m,
+    const patolette__Vector *weights
+) {
 /*----------------------------------------------------------------------------
     Performs PCA.
 
@@ -147,8 +158,9 @@ patolette__PCA *patolette__PCA_perform_PCA(const patolette__Matrix2D *m) {
     m - A Matrix2D treated as a set of samples. Each row a sample,
     each column a feature. In our case, columns represent color channels,
     rows represent colors.
+    weights - The weight of each color.
 -----------------------------------------------------------------------------*/
-    patolette__Matrix2D *vcov = get_vcov(m);
+    patolette__Matrix2D *vcov = get_vcov(m, weights);
     patolette__PCA *result = patolette__PCA_perform_PCA_vcov(vcov);
     patolette__Matrix2D_destroy(vcov);
     return result;

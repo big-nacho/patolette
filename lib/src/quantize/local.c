@@ -4,7 +4,7 @@
    This file defines functions to turn a set of K color clusters into a set
    of N > K color clusters by greedily optimizing some metric. The splitting
    strategy is as outlined in https://dl.acm.org/doi/pdf/10.1145/146443.146475
-   and two selection strategies are implemented.
+   although a weighted variant is implemented.
 -----------------------------------------------------------------------------*/
 
 
@@ -52,13 +52,9 @@ static double get_split_benefit(
 );
 
 static size_t find_best_cluster_index(
-    size_t width,
-    size_t height,
     patolette__ColorClusterArray *clusters,
     ClusterPairArray *children,
-    size_t length,
-    size_t palette_size,
-    double bias
+    size_t length
 );
 
 /*----------------------------------------------------------------------------
@@ -117,6 +113,7 @@ static size_t get_optimal_bucket_index(
     individual projections onto the color set's principal axis.
 -----------------------------------------------------------------------------*/
     const patolette__Matrix2D *colors = patolette__ColorCluster_get_colors(cluster);
+    const patolette__Vector *weights = patolette__ColorCluster_get_weights(cluster);
     
     // Bucket sizes
     patolette__IndexArray *sizes = patolette__IndexArray_init(bucket_count);
@@ -129,10 +126,11 @@ static size_t get_optimal_bucket_index(
         double cx = patolette__Matrix2D_index(colors, i, 0);
         double cy = patolette__Matrix2D_index(colors, i, 1);
         double cz = patolette__Matrix2D_index(colors, i, 2);
-        patolette__Matrix2D_index(sums, 0, bucket) += cx;
-        patolette__Matrix2D_index(sums, 1, bucket) += cy;
-        patolette__Matrix2D_index(sums, 2, bucket) += cz;
-        patolette__IndexArray_index(sizes, bucket) += 1;
+        double weight = weights == NULL ? 1 : patolette__Vector_index(weights, i);
+        patolette__Matrix2D_index(sums, 0, bucket) += cx * weight;
+        patolette__Matrix2D_index(sums, 1, bucket) += cy * weight;
+        patolette__Matrix2D_index(sums, 2, bucket) += cz * weight;
+        patolette__IndexArray_index(sizes, bucket) += weight;
     }
 
     // Intra-bucket vector sums are made cumulative
@@ -245,9 +243,10 @@ static ClusterPair *split_cluster(patolette__ColorCluster *cluster) {
     }
 
     const patolette__Matrix2D *dataset = cluster->dataset__NOTOWNED__;
+    const patolette__Vector *dataset_weights = cluster->dataset_weights__NOTOWNED__;
     ClusterPair *children = create_cluster_pair(
-        patolette__ColorCluster_init(dataset, left_indices),
-        patolette__ColorCluster_init(dataset, right_indices)
+        patolette__ColorCluster_init(dataset, dataset_weights, left_indices),
+        patolette__ColorCluster_init(dataset, dataset_weights, right_indices)
     );
 
     patolette__IndexArray_destroy(bucket_map);
@@ -276,13 +275,9 @@ static double get_split_benefit(
 }
 
 static size_t find_best_cluster_index(
-    size_t width,
-    size_t height,
     patolette__ColorClusterArray *clusters,
     ClusterPairArray *children,
-    size_t length,
-    size_t palette_size,
-    double bias
+    size_t length
 ) {
 /*----------------------------------------------------------------------------
     Finds the index of the best cluster to split.
@@ -291,11 +286,8 @@ static size_t find_best_cluster_index(
     clusters - The list of clusters.
     children - A list containing each cluster's children.
     length - *Defined* portion of the clusters array (can have padding to the right).
-    palette_size - The target palette size.
-    bias - Bias strength.
 -----------------------------------------------------------------------------*/
     patolette__Vector *benefits = patolette__Vector_init(length);
-    patolette__Vector *variances = patolette__Vector_init(length);
 
     for (size_t i = 0; i < length; i++) {
         patolette__ColorCluster *cluster = patolette__ColorClusterArray_index(clusters, i);
@@ -307,23 +299,10 @@ static size_t find_best_cluster_index(
         }
 
         patolette__Vector_index(benefits, i) = get_split_benefit(cluster, cluster_children);
-        patolette__Vector_index(variances, i) = patolette__ColorCluster_get_variance(cluster);
-    }
-
-    if (bias > 0) {
-        size_t area = width * height;
-        double weight = pow((double)length / (double)max(palette_size, 256), 8);
-        for (size_t i = 0; i < length; i++) {
-            patolette__Vector_index(benefits, i) = (
-                (1 - weight) * patolette__Vector_index(benefits, i) +
-                weight * bias * (double)area * patolette__Vector_index(variances, i)
-            );
-        }
     }
 
     size_t result = patolette__Vector_maxloc(benefits);
     patolette__Vector_destroy(benefits);
-    patolette__Vector_destroy(variances);
     return result;
 }
 
@@ -337,21 +316,15 @@ static size_t find_best_cluster_index(
 -----------------------------------------------------------------------------*/
 
 patolette__ColorClusterArray *patolette__LQ_quantize(
-    size_t width,
-    size_t height,
     patolette__ColorClusterArray *clusters,
-    size_t palette_size,
-    double bias
+    size_t palette_size
 ) {
 /*----------------------------------------------------------------------------
     Splits a set of K color clusters into N > K color clusters.
 
     @params
-    width - The width of the image being quantized.
-    height - The height of the image being quantized.
     clusters - The initial list of clusters.
     palette_size - The desired palette size (N).
-    bias - The bias strength.
 -----------------------------------------------------------------------------*/
     if (clusters->length >= palette_size) {
         return clusters;
@@ -368,13 +341,9 @@ patolette__ColorClusterArray *patolette__LQ_quantize(
 
     for (size_t i = clusters->length; i < palette_size; i++) {
         size_t best_cluster_index = find_best_cluster_index(
-            width,
-            height,
             result,
             children,
-            i,
-            palette_size,
-            bias
+            i
         );
 
         patolette__ColorCluster *best_cluster = patolette__ColorClusterArray_index(

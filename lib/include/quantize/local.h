@@ -10,9 +10,6 @@
 #include "quantize/sort.h"
 
 patolette__ColorClusterArray *patolette__LQ_quantize(
-    size_t width,
-    size_t height,
     patolette__ColorClusterArray *clusters,
-    size_t palette_size,
-    double bias
+    size_t palette_size
 );

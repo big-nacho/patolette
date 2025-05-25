@@ -6,6 +6,7 @@ import skimage
 import skimage.io
 from skimage.util import img_as_float
 import cv2
+import time
 
 cimport cython
 cimport numpy as cnp
@@ -31,7 +32,8 @@ cdef extern from 'patolette.h':
     void patolette(
         size_t width,
         size_t height,
-        double *colors,
+        double *color_data,
+        double *weight_data,
         size_t palette_size,
         patolette__QuantizationOptions *options,
         double *palette,
@@ -54,22 +56,21 @@ cdef extern from 'patolette.h':
 -----------------------------------------------------------------------------'''
 
 def raster_scan(
-    img: cnp.ndarray,
-    L: cnp.ndarray,
-    U: cnp.ndarray,
-    D: cnp.ndarray
+    size_t rows,
+    size_t cols,
+    cython.float[:, :] img,
+    cython.float[:, :] L,
+    cython.float[:, :] U,
+    cython.float[:, :] D
 ):
-    cdef size_t rows = img.shape[0]
-    cdef size_t cols = img.shape[1]
-
-    cdef double ix
-    cdef double d
-    cdef double u1
-    cdef double l1
-    cdef double u2
-    cdef double l2
-    cdef double b1
-    cdef double b2
+    cdef float ix
+    cdef float d
+    cdef float u1
+    cdef float l1
+    cdef float u2
+    cdef float l2
+    cdef float b1
+    cdef float b2
     cdef size_t x = 1
     cdef size_t y = 1
 
@@ -107,22 +108,21 @@ def raster_scan(
     return True
 
 def raster_scan_inv(
-    img: cnp.ndarray,
-    L: cnp.ndarray,
-    U: cnp.ndarray,
-    D: cnp.ndarray
+    size_t rows,
+    size_t cols,
+    cython.float[:, :] img,
+    cython.float[:, :] L,
+    cython.float[:, :] U,
+    cython.float[:, :] D
 ):
-    cdef size_t rows = img.shape[0]
-    cdef size_t cols = img.shape[1]
-
-    cdef double ix
-    cdef double d
-    cdef double u1
-    cdef double l1
-    cdef double u2
-    cdef double l2
-    cdef double b1
-    cdef double b2
+    cdef float ix
+    cdef float d
+    cdef float u1
+    cdef float l1
+    cdef float u2
+    cdef float l2
+    cdef float b1
+    cdef float b2
     cdef size_t x = rows - 2
     cdef size_t y = cols - 2
 
@@ -159,30 +159,54 @@ def raster_scan_inv(
 
     return True
 
-def mbd(img: cnp.ndarray, iter: int):
+def mbd(cnp.ndarray[cython.float, ndim = 2] img, int iter):
     if (img.shape[0] <= 3 or img.shape[1] <= 3):
         return None
 
-    cdef cnp.ndarray L = np.array(img, copy = True)
-    cdef cnp.ndarray U = np.array(img, copy = True)
-    cdef cnp.ndarray D = float('Inf') * np.ones((img.shape[0], img.shape[1]))
+    cdef cnp.ndarray[cython.float, ndim = 2] L = np.array(img, copy = True)
+    cdef cnp.ndarray[cython.float, ndim = 2] U = np.array(img, copy = True)
+    cdef cnp.ndarray[cython.float, ndim = 2] D = (
+        float('Inf') * 
+        np.ones((img.shape[0], img.shape[1]))
+    ).astype(np.float32)
 
     D[0, :] = 0
     D[-1, :] = 0
     D[:, 0] = 0
     D[:, -1] = 0
 
+    cdef size_t rows = img.shape[0]
+    cdef size_t cols = img.shape[1]
+    cdef cython.float[:, :] img_view = img
+    cdef cython.float[:, :] L_view = L
+    cdef cython.float[:, :] U_view = U
+    cdef cython.float[:, :] D_view = D
+
     for x in range(0, iter):
         if x % 2 == 1:
-            raster_scan(img, L, U, D)
+            raster_scan(
+                rows,
+                cols,
+                img_view,
+                L_view,
+                U_view,
+                D_view
+            )
         else:
-            raster_scan_inv(img, L, U, D)
+            raster_scan_inv(
+                rows,
+                cols,
+                img_view,
+                L_view,
+                U_view,
+                D_view
+            )
 
     return D
 
-def get_saliency_mbd(img: cnp.ndarray):
-    cdef cnp.ndarray img_mean = np.mean(img, axis = 2)
-    cdef cnp.ndarray sal = mbd(img_mean, 3)
+def get_weights(cnp.ndarray[cython.double, ndim = 3] img, double bias):
+    img_mean = np.mean(img, axis = 2).astype(np.float32)
+    sal = mbd(img_mean, 3)
 
     cdef size_t rows = img.shape[0]
     cdef size_t cols = img.shape[1]
@@ -190,18 +214,18 @@ def get_saliency_mbd(img: cnp.ndarray):
     cdef double img_size = math.sqrt(rows * cols)
     cdef int border_thickness = int(math.floor(0.1 * img_size))
 
-    cdef cnp.ndarray img_lab = img_as_float(skimage.color.rgb2lab(img))
+    img_lab = img_as_float(skimage.color.rgb2lab(img))
 
-    cdef cnp.ndarray px_left = img_lab[0:border_thickness, :, :]
-    cdef cnp.ndarray px_right = img_lab[rows - border_thickness - 1: -1, :, :]
+    px_left = img_lab[0:border_thickness, :, :]
+    px_right = img_lab[rows - border_thickness - 1: -1, :, :]
 
-    cdef cnp.ndarray px_top = img_lab[:, 0:border_thickness, :]
-    cdef cnp.ndarray px_bottom = img_lab[:, cols - border_thickness - 1 : -1, :]
+    px_top = img_lab[:, 0:border_thickness, :]
+    px_bottom = img_lab[:, cols - border_thickness - 1 : -1, :]
 
-    cdef cnp.ndarray px_mean_left = np.mean(px_left, axis = (0, 1))
-    cdef cnp.ndarray px_mean_right = np.mean(px_right, axis = (0, 1))
-    cdef cnp.ndarray px_mean_top = np.mean(px_top, axis = (0, 1))
-    cdef cnp.ndarray px_mean_bottom = np.mean(px_bottom, axis = (0, 1))
+    px_mean_left = np.mean(px_left, axis = (0, 1))
+    px_mean_right = np.mean(px_right, axis = (0, 1))
+    px_mean_top = np.mean(px_top, axis = (0, 1))
+    px_mean_bottom = np.mean(px_bottom, axis = (0, 1))
 
     px_left = px_left.reshape((cols * border_thickness, 3))
     px_right = px_right.reshape((cols * border_thickness, 3))
@@ -209,11 +233,11 @@ def get_saliency_mbd(img: cnp.ndarray):
     px_top = px_top.reshape((rows * border_thickness, 3))
     px_bottom = px_bottom.reshape((rows * border_thickness, 3))
 
-    cdef cnp.ndarray cov_left = np.cov(px_left.T)
-    cdef cnp.ndarray cov_right = np.cov(px_right.T)
+    cov_left = np.cov(px_left.T)
+    cov_right = np.cov(px_right.T)
 
-    cdef cnp.ndarray cov_top = np.cov(px_top.T)
-    cdef cnp.ndarray cov_bottom = np.cov(px_bottom.T)
+    cov_top = np.cov(px_top.T)
+    cov_bottom = np.cov(px_bottom.T)
 
     cov_left = np.linalg.inv(cov_left)
     cov_right = np.linalg.inv(cov_right)
@@ -221,33 +245,33 @@ def get_saliency_mbd(img: cnp.ndarray):
     cov_top = np.linalg.inv(cov_top)
     cov_bottom = np.linalg.inv(cov_bottom)
 
-    cdef cnp.ndarray u_left = np.zeros((sal.shape[0], sal.shape[1]))
-    cdef cnp.ndarray u_right = np.zeros((sal.shape[0], sal.shape[1]))
-    cdef cnp.ndarray u_top = np.zeros((sal.shape[0], sal.shape[1]))
-    cdef cnp.ndarray u_bottom = np.zeros((sal.shape[0], sal.shape[1]))
+    u_left = np.zeros((sal.shape[0], sal.shape[1]))
+    u_right = np.zeros((sal.shape[0], sal.shape[1]))
+    u_top = np.zeros((sal.shape[0], sal.shape[1]))
+    u_bottom = np.zeros((sal.shape[0], sal.shape[1]))
 
-    cdef cnp.ndarray u_final = np.zeros((sal.shape[0], sal.shape[1]))
-    cdef cnp.ndarray img_lab_unrolled = img_lab.reshape(img_lab.shape[0] * img_lab.shape[1], 3)
+    u_final = np.zeros((sal.shape[0], sal.shape[1]))
+    img_lab_unrolled = img_lab.reshape(img_lab.shape[0] * img_lab.shape[1], 3)
 
-    cdef cnp.ndarray px_mean_left_2 = np.zeros((1, 3))
+    px_mean_left_2 = np.zeros((1, 3))
     px_mean_left_2[0, :] = px_mean_left
 
     u_left = scipy.spatial.distance.cdist(img_lab_unrolled,px_mean_left_2, 'mahalanobis', VI = cov_left)
     u_left = u_left.reshape((img_lab.shape[0],img_lab.shape[1]))
 
-    cdef cnp.ndarray px_mean_right_2 = np.zeros((1, 3))
+    px_mean_right_2 = np.zeros((1, 3))
     px_mean_right_2[0, :] = px_mean_right
 
     u_right = scipy.spatial.distance.cdist(img_lab_unrolled,px_mean_right_2, 'mahalanobis', VI = cov_right)
     u_right = u_right.reshape((img_lab.shape[0], img_lab.shape[1]))
 
-    cdef cnp.ndarray px_mean_top_2 = np.zeros((1, 3))
+    px_mean_top_2 = np.zeros((1, 3))
     px_mean_top_2[0, :] = px_mean_top
 
     u_top = scipy.spatial.distance.cdist(img_lab_unrolled,px_mean_top_2, 'mahalanobis', VI = cov_top)
     u_top = u_top.reshape((img_lab.shape[0], img_lab.shape[1]))
 
-    cdef cnp.ndarray px_mean_bottom_2 = np.zeros((1, 3))
+    px_mean_bottom_2 = np.zeros((1, 3))
     px_mean_bottom_2[0, :] = px_mean_bottom
 
     u_bottom = scipy.spatial.distance.cdist(img_lab_unrolled,px_mean_bottom_2, 'mahalanobis', VI = cov_bottom)
@@ -263,7 +287,7 @@ def get_saliency_mbd(img: cnp.ndarray):
     u_top = u_top / max_u_top
     u_bottom = u_bottom / max_u_bottom
 
-    cdef cnp.ndarray u_max = np.maximum(np.maximum(np.maximum(u_left,u_right),u_top),u_bottom)
+    u_max = np.maximum(np.maximum(np.maximum(u_left,u_right),u_top),u_bottom)
 
     u_final = (u_left + u_right + u_top + u_bottom) - u_max
 
@@ -290,7 +314,7 @@ def get_saliency_mbd(img: cnp.ndarray):
     fv = np.vectorize(f)
     sal = sal / np.max(sal)
     sal = fv(sal)
-    return sal
+    return 1 + np.reshape(sal, -1) * bias * rows * cols
 
 '''----------------------------------------------------------------------------
    Saliency END
@@ -307,6 +331,7 @@ ColorSpace_ICtCp = patolette__ColorSpace.patolette__ICtCp
 
 color_mismatch = "The number of colors doesn't match the supplied width and height."
 bad_channel_count = 'Expected colors to be in sRGB[0, 1] space. Channel count mismatch: {} found.'
+bad_bias = 'bias parameter expected to be in the range [0, 1]'
 
 def quantize(
     size_t width,
@@ -316,13 +341,15 @@ def quantize(
     bint dither = True,
     bint palette_only = False,
     patolette__ColorSpace color_space = patolette__ColorSpace.patolette__ICtCp,
-    double bias = 0.005,
+    double bias = 5 * 1e-6,
     int kmeans_niter = 32,
     size_t kmeans_max_samples = 512 ** 2
 ):
     shape = colors.shape
     color_count = shape[0]
     channel_count = shape[1]
+
+    # Some quick validations
 
     if channel_count != 3:
         return (
@@ -340,6 +367,14 @@ def quantize(
             color_mismatch
         )
 
+    if bias < 0 or bias > 1:
+        return (
+            False,
+            None,
+            None,
+            bad_bias
+        )
+
     cdef patolette__QuantizationOptions opts
     opts.dither = dither
     opts.palette_only = palette_only
@@ -348,7 +383,8 @@ def quantize(
     opts.bias = bias
     opts.color_space = color_space
 
-    cdef cython.double *data_pointer = cython.NULL
+    cdef cython.double *color_data_pointer = cython.NULL
+    cdef cython.double *weight_data_pointer = cython.NULL
     cdef cython.double *palette_pointer = cython.NULL
     cdef cython.size_t *palette_map_pointer = cython.NULL
 
@@ -358,7 +394,7 @@ def quantize(
     )
 
     if (data.shape[0] > 0):
-        data_pointer = &data[0, 0]
+        color_data_pointer = &data[0, 0]
 
     cdef cython.double[::1, :] palette = np.zeros(
         (palette_size, 3),
@@ -368,6 +404,15 @@ def quantize(
 
     if (palette.shape[0] > 0):
         palette_pointer = &palette[0, 0]
+
+    cdef cnp.ndarray[cython.double, ndim = 3] img
+    cdef cython.double[::1] weights
+    if (bias > 0):
+        img = np.reshape(colors, (height, width, 3))
+        weights = get_weights(img, bias)
+
+        if (weights is not None):
+            weight_data_pointer = &weights[0]
 
     cdef cython.size_t[::1] palette_map
     if not opts.palette_only:
@@ -385,7 +430,8 @@ def quantize(
     patolette(
         <cython.size_t>width,
         <cython.size_t>height,
-        <cython.double *>data_pointer,
+        <cython.double *>color_data_pointer,
+        <cython.double *>weight_data_pointer,
         <cython.size_t>palette_size,
         <patolette__QuantizationOptions*>&opts,
         <cython.double *>palette_pointer,
