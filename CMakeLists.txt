@@ -110,7 +110,7 @@ endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE lib/include)
 
-set(BLA_VENDOR "OpenBLAS")
+set(BLA_VENDOR "Apple")
 if (APPLE)
   if (PATOLETTE_USE_ACCELERATE)
     set(BLA_VENDOR "Apple")
