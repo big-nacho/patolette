@@ -11,6 +11,7 @@
     2. Principal axis
     3. Colors
     4. Center
+    5. Weights
 
     Should only be retrieved via their respective getters. They are all
     computed only once and then cached.
@@ -38,12 +39,14 @@ void patolette__ColorCluster_destroy(patolette__ColorCluster *cluster) {
 
     patolette__Vector_destroy(cluster->_center);
     patolette__Vector_destroy(cluster->_principal_axis);
+    patolette__Vector_destroy(cluster->weights);
     patolette__Matrix2D_destroy(cluster->_colors);
     patolette__IndexArray_destroy(cluster->indices);
 }
 
 patolette__ColorCluster *patolette__ColorCluster_init(
     const patolette__Matrix2D *dataset,
+    const patolette__Vector *dataset_weights,
     patolette__IndexArray *indices
 ) {
 /*----------------------------------------------------------------------------
@@ -51,6 +54,7 @@ patolette__ColorCluster *patolette__ColorCluster_init(
 
     @params
     dataset - The color dataset the cluster belongs to.
+    dataset_weights - Weight of each sample in the dataset.
     indices - The indices of the cluster's colors in the color dataset.
 -----------------------------------------------------------------------------*/
     patolette__ColorCluster *cluster = malloc(sizeof *cluster);
@@ -65,8 +69,42 @@ patolette__ColorCluster *patolette__ColorCluster_init(
 
     cluster->size = indices->length;
     cluster->indices = indices;
+    cluster->weights = NULL;
     cluster->dataset__NOTOWNED__ = dataset;
+
+    cluster->dataset_weights__NOTOWNED__ = dataset_weights;
     return cluster;
+}
+
+const patolette__Vector *patolette__ColorCluster_get_weights(patolette__ColorCluster *cluster) {
+/*----------------------------------------------------------------------------
+    Gets the weight of each one of the color cluster's colors.
+
+    @params
+    cluster - The color cluster.
+-----------------------------------------------------------------------------*/
+    const patolette__Vector *dataset_weights = cluster->dataset_weights__NOTOWNED__;
+    if (dataset_weights == NULL) {
+        return NULL;
+    }
+
+    patolette__Vector *weights = cluster->weights;
+
+    if (weights != NULL) {
+        // Weights are cached
+        return weights;
+    }
+
+    weights = patolette__Vector_init(cluster->size);
+
+    const patolette__IndexArray *indices = cluster->indices;
+    for (size_t i = 0; i < indices->length; i++) {
+        size_t index = patolette__IndexArray_index(indices, i);
+        patolette__Vector_index(weights, i) = patolette__Vector_index(dataset_weights, index);
+    }
+
+    cluster->weights = weights;
+    return weights;
 }
 
 double patolette__ColorCluster_get_distortion(patolette__ColorCluster *cluster) {
@@ -84,24 +122,26 @@ double patolette__ColorCluster_get_distortion(patolette__ColorCluster *cluster) 
     }
 
     const patolette__Matrix2D *colors = patolette__ColorCluster_get_colors(cluster);
+    const patolette__Vector *weights = patolette__ColorCluster_get_weights(cluster);
 
     const patolette__Vector *center = patolette__ColorCluster_get_center(cluster);
-    double center_x = patolette__Vector_index(center, 0);
-    double center_y = patolette__Vector_index(center, 1);
-    double center_z = patolette__Vector_index(center, 2);
+    double x = patolette__Vector_index(center, 0);
+    double y = patolette__Vector_index(center, 1);
+    double z = patolette__Vector_index(center, 2);
 
     distortion = 0;
     size_t size = cluster->size;
     for (size_t i = 0; i < size; i++) {
+        double weight = weights == NULL ? 1 : patolette__Vector_index(weights, i);
         double cx = patolette__Matrix2D_index(colors, i, 0);
         double cy = patolette__Matrix2D_index(colors, i, 1);
         double cz = patolette__Matrix2D_index(colors, i, 2);
 
         double distance = (
-            SQ(cx - center_x) +
-            SQ(cy - center_y) +
-            SQ(cz - center_z)
-        );
+          SQ(cx - x) +
+          SQ(cy - y) +
+          SQ(cz - z)
+        ) * weight;
 
         distortion += distance;
     }
@@ -141,7 +181,8 @@ const patolette__Vector *patolette__ColorCluster_get_center(patolette__ColorClus
     }
 
     const patolette__Matrix2D *colors = patolette__ColorCluster_get_colors(cluster);
-    center = patolette__Matrix2D_get_vector_mean(colors);
+    const patolette__Vector *weights = patolette__ColorCluster_get_weights(cluster);
+    center = patolette__Matrix2D_get_vector_mean(colors, weights);
     cluster->_center = center;
     return center;
 }
@@ -161,8 +202,9 @@ const patolette__Vector *patolette__ColorCluster_get_principal_axis(patolette__C
     }
 
     const patolette__Matrix2D *colors = patolette__ColorCluster_get_colors(cluster);
+    const patolette__Vector *weights = patolette__ColorCluster_get_weights(cluster);
 
-    patolette__PCA *pca = patolette__PCA_perform_PCA(colors);
+    patolette__PCA *pca = patolette__PCA_perform_PCA(colors, weights);
     if (pca != NULL) {
         axis = patolette__Vector_init(pca->axis->length);
         patolette__Vector_copy_into(pca->axis, axis);

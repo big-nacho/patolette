@@ -197,18 +197,23 @@ patolette__Matrix2D *patolette__Matrix2D_extract_rows(
     return extracted;
 }
 
-patolette__Vector *patolette__Matrix2D_get_vector_mean(const patolette__Matrix2D *m) {
+patolette__Vector *patolette__Matrix2D_get_vector_mean(
+    const patolette__Matrix2D *m,
+    const patolette__Vector *weights
+) {
 /*----------------------------------------------------------------------------
-   Gets the (column) vector mean of a Matrix2D.
+   Gets the weighted (column) vector mean of a Matrix2D.
 
    @params
    m - The Matrix2D.
+   weights - The weight of each row.
 
    @example
    If m = | 1 2 3 |
           | 3 0 0 |
-          | 2 2 2 | then
-   patolette__Matrix2D_get_vector_mean(m) = | 2, 1.333, 1.666 |
+          | 2 2 2 |
+      weights = |1, 2, 1| then
+   patolette__Matrix2D_get_vector_mean(m) = | 3, 1.333, 1.666 |
 -----------------------------------------------------------------------------*/
     size_t rows = m->rows;
     size_t cols = m->cols;
@@ -216,12 +221,13 @@ patolette__Vector *patolette__Matrix2D_get_vector_mean(const patolette__Matrix2D
     patolette__Vector *mean = patolette__Vector_init(cols);
     for (size_t j = 0; j < cols; j++) {
         for (size_t i = 0; i < rows; i++) {
-            double v = patolette__Matrix2D_index(m, i, j);
+            double w = weights == NULL ? 1 : patolette__Vector_index(weights, i);
+            double v = patolette__Matrix2D_index(m, i, j) * w;
             patolette__Vector_index(mean, j) += v;
         }
     }
 
-    double s = 1 / (double)rows;
+    double s = weights == NULL ? 1 / (double)rows : 1 / patolette__Vector_sum(weights);
     patolette__Vector_scale(mean, s);
     return mean;
 }

@@ -15,5 +15,6 @@
 
 patolette__ColorClusterArray *patolette__GQ_quantize(
     const patolette__Matrix2D *colors,
+    const patolette__Vector *weights,
     size_t palette_size
 );

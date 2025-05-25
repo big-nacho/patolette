@@ -32,6 +32,7 @@ size_t min_kmeans_samples = SQ(256);
 static void kmeans(
     float *centers,
     float *samples,
+    float *weights,
     size_t center_count,
     size_t sample_count,
     int niter,
@@ -40,6 +41,7 @@ static void kmeans(
 
 static float *get_centers(const patolette__ColorClusterArray *clusters);
 static float *get_samples(const patolette__Matrix2D *colors);
+static float *get_weights(const patolette__Vector *weights);
 
 /*----------------------------------------------------------------------------
     Declarations END
@@ -53,6 +55,7 @@ static float *get_samples(const patolette__Matrix2D *colors);
 static void kmeans(
     float *centers,
     float *samples,
+    float *weights,
     size_t center_count,
     size_t sample_count,
     int niter,
@@ -89,7 +92,7 @@ static void kmeans(
         center_count,
         samples,
         centers,
-        NULL,
+        weights,
         &params
     );
 }
@@ -140,8 +143,26 @@ static float *get_samples(const patolette__Matrix2D *colors) {
     return samples;
 }
 
+static float *get_weights(const patolette__Vector *weights) {
+/*----------------------------------------------------------------------------
+    Gets weights data for FAISS.
+
+    @params
+    colors - List of color weights.
+-----------------------------------------------------------------------------*/
+    float *fweights = malloc(sizeof(float) * weights->length);
+
+    for (size_t i = 0; i < weights->length; i++) {
+        double w = patolette__Vector_index(weights, i);
+        fweights[i] = (float)w;
+    }
+
+    return fweights;
+}
+
 patolette__Matrix2D *patolette__PALETTE_get_refined_palette(
     const patolette__Matrix2D *colors,
+    const patolette__Vector *weights,
     const patolette__ColorClusterArray *clusters,
     int niter,
     size_t max_samples
@@ -159,9 +180,15 @@ patolette__Matrix2D *patolette__PALETTE_get_refined_palette(
     float *samples = get_samples(colors);
     float *centers = get_centers(clusters);
 
+    float *fweights = NULL;
+    if (weights != NULL) {
+        fweights = get_weights(weights);
+    }
+
     kmeans(
         centers,
         samples,
+        fweights,
         clusters->length,
         colors->rows,
         niter,
@@ -182,6 +209,10 @@ patolette__Matrix2D *patolette__PALETTE_get_refined_palette(
 
     free(centers);
     free(samples);
+    if (fweights != NULL) {
+        free(fweights);
+    }
+
     return palette;
 }
 
