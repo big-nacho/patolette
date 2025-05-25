@@ -23,6 +23,7 @@ void patolette(
     size_t width,
     size_t height,
     const double *data,
+    const double *weights,
     size_t palette_size,
     const patolette__QuantizationOptions *options,
     double *palette,
