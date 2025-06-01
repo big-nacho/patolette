@@ -5,6 +5,8 @@
 cmake-build-debug
 dist
 build
+wheelhouse
+tmp
 out
 test
 tests

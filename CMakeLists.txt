@@ -4,13 +4,8 @@ set(PROJECT_NAME patolette)
 file(READ VERSION.txt PROJECT_VERSION)
 project(${PROJECT_NAME} VERSION ${PROJECT_VERSION} LANGUAGES C CXX)
 
-option(PATOLETTE_USE_ACCELERATE "On macOS, use Apple's Accelerate framework" OFF)
-
+message(STATUS "$ENV{PATOLETTE_INCLUDE_DIR}")
 set(BUILD_SHARED_LIBS ON)
-
-if (CMAKE_BUILD_TYPE STREQUAL "")
-  set(CMAKE_BUILD_TYPE "Release")
-endif()
 
 set(
   LIB_SOURCES_LIST
@@ -46,19 +41,12 @@ set(
 )
 
 if (DEFINED SKBUILD)
-  set(SKBUILD ON)
-endif()
-
-if (SKBUILD)
-  # Building Python extension module
-
   find_package(
     Python
     COMPONENTS Interpreter Development.Module NumPy
     REQUIRED
   )
 
-  # Compile patolette.pyx into a ${PROJECT_NAME}.c file
   add_custom_command(
     OUTPUT ${PROJECT_NAME}_cython.c
     COMMENT
@@ -78,7 +66,6 @@ if (SKBUILD)
   )
 
   if (Python_NumPy_FOUND)
-    # Include numpy headers for cimports in patolette.pyx
     target_compile_definitions(${PROJECT_NAME} PRIVATE NPY_NO_DEPRECATED_API)
     target_include_directories(${PROJECT_NAME} PRIVATE "${Python_NumPy_INCLUDE_DIRS}")
   else()
@@ -87,8 +74,7 @@ if (SKBUILD)
 
   install(TARGETS ${PROJECT_NAME} DESTINATION ${PROJECT_NAME})
 else()
-  # Building standalone library
-
+  # UNTESTED
   add_library(
     ${PROJECT_NAME}
     ${LIB_SOURCES_LIST}
@@ -108,43 +94,26 @@ else()
   )
 endif()
 
+message(STATUS "$ENV{PATOLETTE_INCLUDE_DIR}")
+target_include_directories(${PROJECT_NAME} PRIVATE "$ENV{PATOLETTE_INCLUDE_DIR}")
 target_include_directories(${PROJECT_NAME} PRIVATE lib/include)
 
-set(BLA_VENDOR "OpenBLAS")
-if (APPLE)
-  if (PATOLETTE_USE_ACCELERATE)
-    set(BLA_VENDOR "Apple")
-  else()
-    # find_package(BLAS) doesn't take care of include
-    # directories because typically they're not needed.
-    # But we make use of cblas.h and lapack.h from OpenBLAS,
-    # so it needs to be handled. For now, the path is hardcoded
-    # and assumes a brew installation of OpenBLAS.
-    set(OPENBLAS_INCLUDE_DIR "/opt/homebrew/opt/openblas/include")
-    if(EXISTS "${OPENBLAS_INCLUDE_DIR}")
-      target_include_directories(${PROJECT_NAME} PRIVATE "${OPENBLAS_INCLUDE_DIR}")
-    else()
-      message(FATAL_ERROR "OpenBLAS include directory not found at ${OPENBLAS_INCLUDE_DIR}")
-    endif()
-  endif()
-endif()
+find_library(OPENBLAS_LIB
+    NAMES libopenblas.dylib libopenblas.so libopenblas.dll
+    PATHS "$ENV{PATOLETTE_LIB_DIR}"
+    NO_DEFAULT_PATH
+)
 
-if (UNIX)
-  find_package(BLAS REQUIRED)
-  target_link_libraries(${PROJECT_NAME} PRIVATE BLAS::BLAS)
-endif()
+find_library(FLANN_LIB
+    NAMES libflann.dylib libflann.so libflann.dll
+    PATHS "$ENV{PATOLETTE_LIB_DIR}"
+    NO_DEFAULT_PATH
+)
 
-if (WIN32)
-  # TODO
-endif()
+target_link_libraries(${PROJECT_NAME} PRIVATE ${OMP_LIB})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENBLAS_LIB})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${FLANN_LIB})
 
-find_package(FLANN REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE flann::flann)
-
-set(FAISS_ENABLE_C_API ON)
-set(FAISS_ENABLE_GPU OFF)
-set(FAISS_ENABLE_PYTHON OFF)
-set(BUILD_TESTING OFF)
 set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(lib/faiss)
 target_include_directories(${PROJECT_NAME} PRIVATE lib)

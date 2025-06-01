@@ -1,12 +1,8 @@
-import math
 import numpy as np
-import scipy.spatial.distance
-import scipy.signal
-import skimage
-import skimage.io
+from math import sqrt, floor, exp
+from scipy.spatial.distance import cdist
+from skimage.color import rgb2lab
 from skimage.util import img_as_float
-import cv2
-import time
 
 cimport cython
 cimport numpy as cnp
@@ -211,10 +207,10 @@ def get_weights(cnp.ndarray[cython.double, ndim = 3] img, double bias):
     cdef size_t rows = img.shape[0]
     cdef size_t cols = img.shape[1]
 
-    cdef double img_size = math.sqrt(rows * cols)
-    cdef int border_thickness = int(math.floor(0.1 * img_size))
+    cdef double img_size = sqrt(rows * cols)
+    cdef int border_thickness = int(floor(0.1 * img_size))
 
-    img_lab = img_as_float(skimage.color.rgb2lab(img))
+    img_lab = img_as_float(rgb2lab(img))
 
     px_left = img_lab[0:border_thickness, :, :]
     px_right = img_lab[rows - border_thickness - 1: -1, :, :]
@@ -256,25 +252,25 @@ def get_weights(cnp.ndarray[cython.double, ndim = 3] img, double bias):
     px_mean_left_2 = np.zeros((1, 3))
     px_mean_left_2[0, :] = px_mean_left
 
-    u_left = scipy.spatial.distance.cdist(img_lab_unrolled,px_mean_left_2, 'mahalanobis', VI = cov_left)
+    u_left = cdist(img_lab_unrolled,px_mean_left_2, 'mahalanobis', VI = cov_left)
     u_left = u_left.reshape((img_lab.shape[0],img_lab.shape[1]))
 
     px_mean_right_2 = np.zeros((1, 3))
     px_mean_right_2[0, :] = px_mean_right
 
-    u_right = scipy.spatial.distance.cdist(img_lab_unrolled,px_mean_right_2, 'mahalanobis', VI = cov_right)
+    u_right = cdist(img_lab_unrolled,px_mean_right_2, 'mahalanobis', VI = cov_right)
     u_right = u_right.reshape((img_lab.shape[0], img_lab.shape[1]))
 
     px_mean_top_2 = np.zeros((1, 3))
     px_mean_top_2[0, :] = px_mean_top
 
-    u_top = scipy.spatial.distance.cdist(img_lab_unrolled,px_mean_top_2, 'mahalanobis', VI = cov_top)
+    u_top = cdist(img_lab_unrolled,px_mean_top_2, 'mahalanobis', VI = cov_top)
     u_top = u_top.reshape((img_lab.shape[0], img_lab.shape[1]))
 
     px_mean_bottom_2 = np.zeros((1, 3))
     px_mean_bottom_2[0, :] = px_mean_bottom
 
-    u_bottom = scipy.spatial.distance.cdist(img_lab_unrolled,px_mean_bottom_2, 'mahalanobis', VI = cov_bottom)
+    u_bottom = cdist(img_lab_unrolled,px_mean_bottom_2, 'mahalanobis', VI = cov_bottom)
     u_bottom = u_bottom.reshape((img_lab.shape[0], img_lab.shape[1]))
 
     cdef float max_u_left = np.max(u_left)
@@ -303,13 +299,13 @@ def get_weights(cnp.ndarray[cython.double, ndim = 3] img, double bias):
     w2 = w / 2.0
     h2 = h / 2.0
 
-    C = 1 - np.sqrt(np.power(xv - h2, 2) + np.power(yv - w2, 2)) / math.sqrt(np.power(w2, 2) + np.power(h2, 2))
+    C = 1 - np.sqrt(np.power(xv - h2, 2) + np.power(yv - w2, 2)) / sqrt(np.power(w2, 2) + np.power(h2, 2))
 
     sal = sal * C
 
     def f(x):
         b = 10.0
-        return 1.0 / (1.0 + math.exp(-b*(x - 0.5)))
+        return 1.0 / (1.0 + exp(-b*(x - 0.5)))
 
     fv = np.vectorize(f)
     sal = sal / np.max(sal)
