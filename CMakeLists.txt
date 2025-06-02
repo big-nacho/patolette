@@ -4,8 +4,8 @@ set(PROJECT_NAME patolette)
 file(READ VERSION.txt PROJECT_VERSION)
 project(${PROJECT_NAME} VERSION ${PROJECT_VERSION} LANGUAGES C CXX)
 
-message(STATUS "$ENV{PATOLETTE_INCLUDE_DIR}")
 set(BUILD_SHARED_LIBS ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(
   LIB_SOURCES_LIST
@@ -94,12 +94,11 @@ else()
   )
 endif()
 
-message(STATUS "$ENV{PATOLETTE_INCLUDE_DIR}")
 target_include_directories(${PROJECT_NAME} PRIVATE "$ENV{PATOLETTE_INCLUDE_DIR}")
 target_include_directories(${PROJECT_NAME} PRIVATE lib/include)
 
 find_library(OPENBLAS_LIB
-    NAMES libopenblas.dylib libopenblas.so libopenblas.dll
+    NAMES libopenblas.dylib libopenblas.so.0 libopenblas.dll
     PATHS "$ENV{PATOLETTE_LIB_DIR}"
     NO_DEFAULT_PATH
 )

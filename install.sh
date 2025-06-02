@@ -22,19 +22,19 @@ read -p "${BOLD}Do you wish to continue? ${RESET}[yY/nN] " -r
 echo
 
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-  echo -e "${RED}Sad stuff, man."
+  echo -e "${RED}Sad stuff, man.${RESET}"
   exit
 fi
 
 echo -e "${CYAN}Setting up a temporary conda environment...${RESET}"
 rm -rf tmp
 mkdir -p tmp
-curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh -o tmp/miniconda.sh
-bash tmp/miniconda.sh -b -u -p tmp 2>/dev/null
+curl https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o tmp/miniconda.sh
+bash tmp/miniconda.sh -b -u -p tmp
 rm tmp/miniconda.sh
 
 echo -e "${CYAN}Installing build dependencies...${RESET}"
-./tmp/bin/conda install -n base openblas conda-forge::flann -y
+./tmp/bin/conda install -n base conda-forge::openblas conda-forge::flann -y
 
 echo -e "${CYAN}Building wheel...${RESET}"
 python3 -m venv .tmp_venv
@@ -45,9 +45,16 @@ export PATOLETTE_INCLUDE_DIR="${DIR}/tmp/include"
 python3 -m build
 
 echo -e "${CYAN}Repairing wheel...${RESET}"
-pip install delocate
-export DYLD_LIBRARY_PATH="${DIR}/tmp/lib"
-python3 -m delocate.cmd.delocate_wheel dist/*.whl
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    pip install auditwheel
+    export LD_LIBRARY_PATH="${DIR}/tmp/lib"
+    auditwheel repair dist/*.whl
+
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    pip install delocate
+    export DYLD_LIBRARY_PATH="${DIR}/tmp/lib"
+    python3 -m delocate.cmd.delocate_wheel dist/*.whl
+fi
 
 if [ ! -z "${VENV}" ]; then
   deactivate
@@ -55,13 +62,18 @@ if [ ! -z "${VENV}" ]; then
 fi
 
 echo -e "${CYAN}Installing wheel...${RESET}"
-pip install dist/*.whl --force-reinstall
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    pip install wheelhouse/*.whl --force-reinstall
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    pip install dist/*.whl --force-reinstall
+fi
 
 echo -e "${CYAN}Cleaning up...${RESET}"
 deactivate
 rm -rf tmp
 rm -rf dist
 rm -rf .tmp_venv
+rm -rf wheelhouse
 
 echo -e "${GREEN}Installation successful!${RESET}"
 echo -e "${BOLD}To uninstall, simply run: pip uninstall patolette${RESET}"
