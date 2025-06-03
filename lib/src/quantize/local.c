@@ -325,6 +325,10 @@ patolette__ColorClusterArray *patolette__LQ_quantize(
     @params
     clusters - The initial list of clusters.
     palette_size - The desired palette size (N).
+
+    @note
+    The input list of clusters is modified. Its items are set to
+    NULL if destroyed.
 -----------------------------------------------------------------------------*/
     if (clusters->length >= palette_size) {
         return clusters;

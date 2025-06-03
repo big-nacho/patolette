@@ -96,12 +96,22 @@ endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE lib/include)
 
-set(BLA_VENDOR "OpenBLAS")
-find_package(BLAS REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE BLAS::BLAS)
+if (APPLE)
+  # Try to use Apple's Accelerate framework as BLAS implementation
+  find_library(ACCELERATE_FRAMEWORK Accelerate)
+  if(ACCELERATE_FRAMEWORK)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE PATOLETTE_USE_ACCELERATE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ACCELERATE_NEW_LAPACK)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${ACCELERATE_FRAMEWORK})
+  endif()
+else()
+  set(BLA_VENDOR "OpenBLAS")
+  find_package(BLAS REQUIRED)
+  target_link_libraries(${PROJECT_NAME} PRIVATE BLAS::BLAS)
 
-find_package(LAPACK REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE LAPACK::LAPACK)
+  find_package(LAPACK REQUIRED)
+  target_link_libraries(${PROJECT_NAME} PRIVATE LAPACK::LAPACK)
+endif()
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FLANN REQUIRED flann)

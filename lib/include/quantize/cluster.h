@@ -81,3 +81,6 @@ double patolette__ColorCluster_get_variance(patolette__ColorCluster *cluster);
 const patolette__Vector *patolette__ColorCluster_get_center(patolette__ColorCluster *cluster);
 const patolette__Vector *patolette__ColorCluster_get_principal_axis(patolette__ColorCluster *cluster);
 const patolette__Matrix2D *patolette__ColorCluster_get_colors(patolette__ColorCluster *cluster);
+
+// TODO: refactor, weird placement
+void patolette__ColorClusterArray_destroy_deep(patolette__ColorClusterArray *array);
