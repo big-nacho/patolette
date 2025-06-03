@@ -1,5 +1,6 @@
 .DS_Store
 .venv
+.tmp_venv
 .idea
 .pytest_cache
 cmake-build-debug

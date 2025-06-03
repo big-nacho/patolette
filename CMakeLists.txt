@@ -94,24 +94,20 @@ else()
   )
 endif()
 
-target_include_directories(${PROJECT_NAME} PRIVATE "$ENV{PATOLETTE_INCLUDE_DIR}")
 target_include_directories(${PROJECT_NAME} PRIVATE lib/include)
 
-find_library(OPENBLAS_LIB
-    NAMES libopenblas.dylib libopenblas.so.0 libopenblas.dll
-    PATHS "$ENV{PATOLETTE_LIB_DIR}"
-    NO_DEFAULT_PATH
-)
+set(BLA_VENDOR "OpenBLAS")
+find_package(BLAS REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE BLAS::BLAS)
 
-find_library(FLANN_LIB
-    NAMES libflann.dylib libflann.so libflann.dll
-    PATHS "$ENV{PATOLETTE_LIB_DIR}"
-    NO_DEFAULT_PATH
-)
+find_package(LAPACK REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE LAPACK::LAPACK)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ${OMP_LIB})
-target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENBLAS_LIB})
-target_link_libraries(${PROJECT_NAME} PRIVATE ${FLANN_LIB})
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FLANN REQUIRED flann)
+target_include_directories(${PROJECT_NAME} PRIVATE ${FLANN_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${FLANN_LIBRARIES})
+target_link_directories(${PROJECT_NAME} PRIVATE ${FLANN_LIBRARY_DIRS})
 
 set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(lib/faiss)

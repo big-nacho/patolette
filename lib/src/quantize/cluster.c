@@ -42,6 +42,7 @@ void patolette__ColorCluster_destroy(patolette__ColorCluster *cluster) {
     patolette__Vector_destroy(cluster->weights);
     patolette__Matrix2D_destroy(cluster->_colors);
     patolette__IndexArray_destroy(cluster->indices);
+    free(cluster);
 }
 
 patolette__ColorCluster *patolette__ColorCluster_init(

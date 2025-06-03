@@ -180,12 +180,14 @@ void patolette(
     int kmeans_niter = options->kmeans_niter;
     size_t kmeans_max_samples = options->kmeans_max_samples;
 
+    printf("Init matrix!\n");
     patolette__Matrix2D *colors = patolette__Matrix2D_init(
         width * height,
         3,
         color_data
     );
 
+    printf("Init weights!\n");
     patolette__Vector *weights = NULL;
     if (weight_data != NULL) {
         weights = patolette__Vector_init(width * height);
@@ -202,33 +204,48 @@ void patolette(
         patolette__COLOR_sRGB_Matrix_to_ICtCp_Matrix(colors);
     }
 
-    patolette__ColorClusterArray *clusters = patolette__GQ_quantize(
+    printf("GQ!\n");
+    patolette__ColorClusterArray *gq_clusters = patolette__GQ_quantize(
         colors,
         weights,
         palette_size
     );
 
-    if (clusters == NULL) {
+    if (gq_clusters == NULL) {
         // Error
         *exit_code = bad_quant;
+        patolette__Vector_destroy(weights);
         patolette__Matrix2D_destroy(colors);
         return;
     }
 
-    clusters = patolette__LQ_quantize(
-        clusters,
+    printf("LQ!\n");
+    patolette__ColorClusterArray *clusters = patolette__LQ_quantize(
+        gq_clusters,
         palette_size
     );
 
-    if (clusters == NULL) {
+    if (gq_clusters == NULL) {
         // Error
         *exit_code = bad_quant;
+
+        for (size_t i = 0; i < gq_clusters->length; i++) {
+            patolette__ColorCluster *cluster = patolette__ColorClusterArray_index(
+                gq_clusters, 
+                i
+            );
+            patolette__ColorCluster_destroy(cluster);
+        }
+
+        patolette__ColorClusterArray_destroy(gq_clusters);
+        patolette__Vector_destroy(weights);
         patolette__Matrix2D_destroy(colors);
         return;
     }
 
     patolette__Matrix2D *palette_colors;
     if (kmeans_niter > 0) {
+        printf("kmeans!\n");
         palette_colors = patolette__PALETTE_get_refined_palette(
             colors,
             weights,
@@ -260,6 +277,7 @@ void patolette(
                 patolette__COLOR_sRGB_Matrix_to_Linear_Rec2020_Matrix(palette_colors);
             }
 
+            printf("Dither!\n");
             patolette__DITHER_riemersma(
                 colors,
                 width,
@@ -305,9 +323,19 @@ void patolette(
         }
     }
 
-    *exit_code = success;
-
     patolette__Matrix2D_destroy(colors);
     patolette__Matrix2D_destroy(palette_colors);
     patolette__Vector_destroy(weights);
+
+    for (size_t i = 0; i < clusters->length; i++) {
+        patolette__ColorCluster *cluster = patolette__ColorClusterArray_index(
+            clusters, 
+            i
+        );
+        patolette__ColorCluster_destroy(cluster);
+    }
+
+    patolette__ColorClusterArray_destroy(clusters);
+
+    *exit_code = success;
 }

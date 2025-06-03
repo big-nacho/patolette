@@ -26,22 +26,20 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
   exit
 fi
 
-echo -e "${CYAN}Setting up a temporary conda environment...${RESET}"
-rm -rf tmp
-mkdir -p tmp
-curl https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o tmp/miniconda.sh
-bash tmp/miniconda.sh -b -u -p tmp
-rm tmp/miniconda.sh
+# echo -e "${CYAN}Setting up a temporary conda environment...${RESET}"
+# rm -rf tmp
+# mkdir -p tmp
+# curl https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o tmp/miniconda.sh
+# bash tmp/miniconda.sh -b -u -p tmp
+# rm tmp/miniconda.sh
 
-echo -e "${CYAN}Installing build dependencies...${RESET}"
-./tmp/bin/conda install -n base conda-forge::openblas conda-forge::flann -y
+# echo -e "${CYAN}Installing build dependencies...${RESET}"
+# ./tmp/bin/conda install -n base conda-forge::openblas conda-forge::flann -y
 
 echo -e "${CYAN}Building wheel...${RESET}"
 python3 -m venv .tmp_venv
 source .tmp_venv/bin/activate
 pip install build
-export PATOLETTE_LIB_DIR="${DIR}/tmp/lib"
-export PATOLETTE_INCLUDE_DIR="${DIR}/tmp/include"
 python3 -m build
 
 echo -e "${CYAN}Repairing wheel...${RESET}"
