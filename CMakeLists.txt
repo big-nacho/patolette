@@ -1,16 +1,12 @@
 cmake_minimum_required(VERSION 3.27 FATAL_ERROR)
 
-set(PROJECT_NAME patolette)
 file(READ VERSION.txt PROJECT_VERSION)
-project(${PROJECT_NAME} VERSION ${PROJECT_VERSION} LANGUAGES C CXX)
+project(patolette VERSION ${PROJECT_VERSION} LANGUAGES C CXX)
 
-option(PATOLETTE_USE_ACCELERATE "On macOS, use Apple's Accelerate framework" OFF)
+# One of "generic", "avx2", "avx512", "avx512_spr", "sve"
+option(OPT_LEVEL "Optimization level" "generic")
 
-set(BUILD_SHARED_LIBS ON)
-
-if (CMAKE_BUILD_TYPE STREQUAL "")
-  set(CMAKE_BUILD_TYPE "Release")
-endif()
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(
   LIB_SOURCES_LIST
@@ -46,108 +42,85 @@ set(
 )
 
 if (DEFINED SKBUILD)
-  set(SKBUILD ON)
-endif()
-
-if (SKBUILD)
-  # Building Python extension module
-
   find_package(
     Python
     COMPONENTS Interpreter Development.Module NumPy
     REQUIRED
   )
 
-  # Compile patolette.pyx into a ${PROJECT_NAME}.c file
   add_custom_command(
-    OUTPUT ${PROJECT_NAME}_cython.c
+    OUTPUT patolette_cython.c
     COMMENT
-      "Making ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_cython.c from ${CMAKE_CURRENT_SOURCE_DIR}/patolette.pyx"
+      "Making ${CMAKE_CURRENT_BINARY_DIR}/patolette_cython.c from ${CMAKE_CURRENT_SOURCE_DIR}/patolette.pyx"
     COMMAND Python::Interpreter -m cython
-            "${CMAKE_CURRENT_SOURCE_DIR}/src/patolette/patolette.pyx" --output-file ${PROJECT_NAME}_cython.c
-            --module-name ${PROJECT_NAME}
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/patolette/patolette.pyx" --output-file patolette_cython.c
+            --module-name patolette
     DEPENDS src/patolette/patolette.pyx
     VERBATIM
   )
 
   python_add_library(
-    ${PROJECT_NAME} MODULE 
-    ${PROJECT_NAME}_cython.c
+    patolette MODULE
+    patolette_cython.c
     ${LIB_SOURCES_LIST}
     WITH_SOABI
   )
 
   if (Python_NumPy_FOUND)
-    # Include numpy headers for cimports in patolette.pyx
-    target_compile_definitions(${PROJECT_NAME} PRIVATE NPY_NO_DEPRECATED_API)
-    target_include_directories(${PROJECT_NAME} PRIVATE "${Python_NumPy_INCLUDE_DIRS}")
+    target_compile_definitions(patolette PRIVATE NPY_NO_DEPRECATED_API)
+    target_include_directories(patolette PRIVATE "${Python_NumPy_INCLUDE_DIRS}")
   else()
     message(FATAL_ERROR "Could not find NumPy headers")
   endif()
 
-  install(TARGETS ${PROJECT_NAME} DESTINATION ${PROJECT_NAME})
+  install(TARGETS patolette DESTINATION patolette)
 else()
-  # Building standalone library
-
+  # UNTESTED
   add_library(
-    ${PROJECT_NAME}
+    patolette
     ${LIB_SOURCES_LIST}
   )
 
   set_target_properties(
-    ${PROJECT_NAME} 
+    patolette
     PROPERTIES 
     VERSION ${PROJECT_VERSION}
     PUBLIC_HEADER lib/include/patolette.h
   )
 
-  install(TARGETS ${PROJECT_NAME}
-    LIBRARY DESTINATION ${PROJECT_NAME}/lib
-    ARCHIVE DESTINATION ${PROJECT_NAME}/lib
-    PUBLIC_HEADER DESTINATION ${PROJECT_NAME}/include
+  install(TARGETS patolette
+    LIBRARY DESTINATION patolette/lib
+    ARCHIVE DESTINATION patolette/lib
+    PUBLIC_HEADER DESTINATION patolette/include
   )
 endif()
 
-target_include_directories(${PROJECT_NAME} PRIVATE lib/include)
-
-set(BLA_VENDOR "OpenBLAS")
 if (APPLE)
-  if (PATOLETTE_USE_ACCELERATE)
-    set(BLA_VENDOR "Apple")
-  else()
-    # find_package(BLAS) doesn't take care of include
-    # directories because typically they're not needed.
-    # But we make use of cblas.h and lapack.h from OpenBLAS,
-    # so it needs to be handled. For now, the path is hardcoded
-    # and assumes a brew installation of OpenBLAS.
-    set(OPENBLAS_INCLUDE_DIR "/opt/homebrew/opt/openblas/include")
-    if(EXISTS "${OPENBLAS_INCLUDE_DIR}")
-      target_include_directories(${PROJECT_NAME} PRIVATE "${OPENBLAS_INCLUDE_DIR}")
-    else()
-      message(FATAL_ERROR "OpenBLAS include directory not found at ${OPENBLAS_INCLUDE_DIR}")
-    endif()
-  endif()
-endif()
+  find_library(ACCELERATE_FRAMEWORK Accelerate REQUIRED)
+  target_link_libraries(patolette PRIVATE ${ACCELERATE_FRAMEWORK})
+  target_compile_definitions(patolette PRIVATE ACCELERATE_NEW_LAPACK)
+  target_compile_definitions(patolette PRIVATE PATOLETTE_USE_ACCELERATE)
+else()
+  set(BLA_VENDOR "OpenBLAS")
 
-if (UNIX)
   find_package(BLAS REQUIRED)
-  target_link_libraries(${PROJECT_NAME} PRIVATE BLAS::BLAS)
+  target_link_libraries(patolette PRIVATE BLAS::BLAS)
+
+  find_package(LAPACK REQUIRED)
+  target_link_libraries(patolette PRIVATE LAPACK::LAPACK)
 endif()
 
-if (WIN32)
-  # TODO
-endif()
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FLANN REQUIRED flann)
+target_link_libraries(patolette PRIVATE ${FLANN_LIBRARIES})
+target_link_directories(patolette PRIVATE ${FLANN_LIBRARY_DIRS})
+target_include_directories(patolette PRIVATE ${FLANN_INCLUDE_DIRS})
 
-find_package(FLANN REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE flann::flann)
-
-set(FAISS_ENABLE_C_API ON)
-set(FAISS_ENABLE_GPU OFF)
-set(FAISS_ENABLE_PYTHON OFF)
-set(BUILD_TESTING OFF)
 set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(lib/faiss)
-target_include_directories(${PROJECT_NAME} PRIVATE lib)
-target_link_libraries(${PROJECT_NAME} PRIVATE faiss_c)
+target_link_libraries(patolette PRIVATE faiss_c)
+target_include_directories(patolette PRIVATE lib)
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall)
+target_include_directories(patolette PRIVATE lib/include)
+
+target_compile_options(patolette PRIVATE -Wall)

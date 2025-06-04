@@ -202,28 +202,32 @@ void patolette(
         patolette__COLOR_sRGB_Matrix_to_ICtCp_Matrix(colors);
     }
 
-    patolette__ColorClusterArray *clusters = patolette__GQ_quantize(
+    patolette__ColorClusterArray *gq_clusters = patolette__GQ_quantize(
         colors,
         weights,
         palette_size
     );
 
-    if (clusters == NULL) {
+    if (gq_clusters == NULL) {
         // Error
         *exit_code = bad_quant;
+        patolette__Vector_destroy(weights);
         patolette__Matrix2D_destroy(colors);
         return;
     }
 
-    clusters = patolette__LQ_quantize(
-        clusters,
+    patolette__ColorClusterArray *clusters = patolette__LQ_quantize(
+        gq_clusters,
         palette_size
     );
 
     if (clusters == NULL) {
         // Error
         *exit_code = bad_quant;
+
         patolette__Matrix2D_destroy(colors);
+        patolette__Vector_destroy(weights);
+        patolette__ColorClusterArray_destroy_deep(gq_clusters);
         return;
     }
 
@@ -305,9 +309,9 @@ void patolette(
         }
     }
 
-    *exit_code = success;
-
     patolette__Matrix2D_destroy(colors);
     patolette__Matrix2D_destroy(palette_colors);
     patolette__Vector_destroy(weights);
+    patolette__ColorClusterArray_destroy_deep(clusters);
+    *exit_code = success;
 }

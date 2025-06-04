@@ -77,8 +77,8 @@ static void destroy_cluster_pair(ClusterPair *pair) {
         return;
     }
 
-    free(pair->left);
-    free(pair->right);
+    patolette__ColorCluster_destroy(pair->left);
+    patolette__ColorCluster_destroy(pair->right);
     free(pair);
 }
 
@@ -325,6 +325,10 @@ patolette__ColorClusterArray *patolette__LQ_quantize(
     @params
     clusters - The initial list of clusters.
     palette_size - The desired palette size (N).
+
+    @note
+    The input list of clusters is modified. Its items are set to
+    NULL if destroyed.
 -----------------------------------------------------------------------------*/
     if (clusters->length >= palette_size) {
         return clusters;
@@ -374,6 +378,9 @@ patolette__ColorClusterArray *patolette__LQ_quantize(
         ClusterPairArray_index(children, best_cluster_index) = split_cluster(right);
 
         patolette__ColorCluster_destroy(best_cluster);
+        if (best_cluster_index < clusters->length) {
+            patolette__ColorClusterArray_index(clusters, best_cluster_index) = NULL;
+        }
     }
 
     for (size_t i = 0; i < children->length; i++) {

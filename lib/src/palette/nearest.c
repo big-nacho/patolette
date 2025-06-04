@@ -97,7 +97,7 @@ flann_index_t patolette__PALETTE_build_palette_index(
 
     *params = DEFAULT_FLANN_PARAMETERS;
     params->algorithm = FLANN_INDEX_KDTREE_SINGLE;
-    params->cores = 0;
+    params->cores = 1;
     params->eps = 0;
 
     float speedup;
