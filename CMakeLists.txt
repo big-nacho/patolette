@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.27 FATAL_ERROR)
 
-set(PROJECT_NAME patolette)
 file(READ VERSION.txt PROJECT_VERSION)
-project(${PROJECT_NAME} VERSION ${PROJECT_VERSION} LANGUAGES C CXX)
+project(patolette VERSION ${PROJECT_VERSION} LANGUAGES C CXX)
 
-set(BUILD_SHARED_LIBS ON)
+# One of "generic", "avx2", "avx512", "avx512_spr", "sve"
+option(OPT_LEVEL "Optimization level" "generic")
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(
@@ -48,80 +49,78 @@ if (DEFINED SKBUILD)
   )
 
   add_custom_command(
-    OUTPUT ${PROJECT_NAME}_cython.c
+    OUTPUT patolette_cython.c
     COMMENT
-      "Making ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_cython.c from ${CMAKE_CURRENT_SOURCE_DIR}/patolette.pyx"
+      "Making ${CMAKE_CURRENT_BINARY_DIR}/patolette_cython.c from ${CMAKE_CURRENT_SOURCE_DIR}/patolette.pyx"
     COMMAND Python::Interpreter -m cython
-            "${CMAKE_CURRENT_SOURCE_DIR}/src/patolette/patolette.pyx" --output-file ${PROJECT_NAME}_cython.c
-            --module-name ${PROJECT_NAME}
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/patolette/patolette.pyx" --output-file patolette_cython.c
+            --module-name patolette
     DEPENDS src/patolette/patolette.pyx
     VERBATIM
   )
 
   python_add_library(
-    ${PROJECT_NAME} MODULE 
-    ${PROJECT_NAME}_cython.c
+    patolette MODULE
+    patolette_cython.c
     ${LIB_SOURCES_LIST}
     WITH_SOABI
   )
 
   if (Python_NumPy_FOUND)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE NPY_NO_DEPRECATED_API)
-    target_include_directories(${PROJECT_NAME} PRIVATE "${Python_NumPy_INCLUDE_DIRS}")
+    target_compile_definitions(patolette PRIVATE NPY_NO_DEPRECATED_API)
+    target_include_directories(patolette PRIVATE "${Python_NumPy_INCLUDE_DIRS}")
   else()
     message(FATAL_ERROR "Could not find NumPy headers")
   endif()
 
-  install(TARGETS ${PROJECT_NAME} DESTINATION ${PROJECT_NAME})
+  install(TARGETS patolette DESTINATION patolette)
 else()
   # UNTESTED
   add_library(
-    ${PROJECT_NAME}
+    patolette
     ${LIB_SOURCES_LIST}
   )
 
   set_target_properties(
-    ${PROJECT_NAME} 
+    patolette
     PROPERTIES 
     VERSION ${PROJECT_VERSION}
     PUBLIC_HEADER lib/include/patolette.h
   )
 
-  install(TARGETS ${PROJECT_NAME}
-    LIBRARY DESTINATION ${PROJECT_NAME}/lib
-    ARCHIVE DESTINATION ${PROJECT_NAME}/lib
-    PUBLIC_HEADER DESTINATION ${PROJECT_NAME}/include
+  install(TARGETS patolette
+    LIBRARY DESTINATION patolette/lib
+    ARCHIVE DESTINATION patolette/lib
+    PUBLIC_HEADER DESTINATION patolette/include
   )
 endif()
 
-target_include_directories(${PROJECT_NAME} PRIVATE lib/include)
-
 if (APPLE)
-  # Try to use Apple's Accelerate framework as BLAS implementation
-  find_library(ACCELERATE_FRAMEWORK Accelerate)
-  if(ACCELERATE_FRAMEWORK)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE PATOLETTE_USE_ACCELERATE)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE ACCELERATE_NEW_LAPACK)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${ACCELERATE_FRAMEWORK})
-  endif()
+  find_library(ACCELERATE_FRAMEWORK Accelerate REQUIRED)
+  target_link_libraries(patolette PRIVATE ${ACCELERATE_FRAMEWORK})
+  target_compile_definitions(patolette PRIVATE ACCELERATE_NEW_LAPACK)
+  target_compile_definitions(patolette PRIVATE PATOLETTE_USE_ACCELERATE)
 else()
   set(BLA_VENDOR "OpenBLAS")
+
   find_package(BLAS REQUIRED)
-  target_link_libraries(${PROJECT_NAME} PRIVATE BLAS::BLAS)
+  target_link_libraries(patolette PRIVATE BLAS::BLAS)
 
   find_package(LAPACK REQUIRED)
-  target_link_libraries(${PROJECT_NAME} PRIVATE LAPACK::LAPACK)
+  target_link_libraries(patolette PRIVATE LAPACK::LAPACK)
 endif()
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FLANN REQUIRED flann)
-target_include_directories(${PROJECT_NAME} PRIVATE ${FLANN_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PRIVATE ${FLANN_LIBRARIES})
-target_link_directories(${PROJECT_NAME} PRIVATE ${FLANN_LIBRARY_DIRS})
+target_link_libraries(patolette PRIVATE ${FLANN_LIBRARIES})
+target_link_directories(patolette PRIVATE ${FLANN_LIBRARY_DIRS})
+target_include_directories(patolette PRIVATE ${FLANN_INCLUDE_DIRS})
 
 set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(lib/faiss)
-target_include_directories(${PROJECT_NAME} PRIVATE lib)
-target_link_libraries(${PROJECT_NAME} PRIVATE faiss_c)
+target_link_libraries(patolette PRIVATE faiss_c)
+target_include_directories(patolette PRIVATE lib)
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall)
+target_include_directories(patolette PRIVATE lib/include)
+
+target_compile_options(patolette PRIVATE -Wall)

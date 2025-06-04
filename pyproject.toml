@@ -14,3 +14,5 @@ regex = '(?P<value>.+)'
 
 [tool.scikit-build]
 cmake.build-type = "Release"
+# One of "generic", "avx2", "avx512", "avx512_spr", "sve"
+cmake.args = ["-DOPT_LEVEL=generic"]
