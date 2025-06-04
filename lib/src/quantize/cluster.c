@@ -42,6 +42,7 @@ void patolette__ColorCluster_destroy(patolette__ColorCluster *cluster) {
     patolette__Vector_destroy(cluster->weights);
     patolette__Matrix2D_destroy(cluster->_colors);
     patolette__IndexArray_destroy(cluster->indices);
+    free(cluster);
 }
 
 patolette__ColorCluster *patolette__ColorCluster_init(
@@ -234,6 +235,25 @@ const patolette__Matrix2D *patolette__ColorCluster_get_colors(patolette__ColorCl
     colors = patolette__Matrix2D_extract_rows(dataset, indices);
     cluster->_colors = colors;
     return colors;
+}
+
+// TODO: refactor, weird placement
+void patolette__ColorClusterArray_destroy_deep(patolette__ColorClusterArray *array) {
+/*----------------------------------------------------------------------------
+    Destroys a color cluster array, as well as each color cluster
+    found in it.
+
+    @params
+    array - The color cluster array.
+-----------------------------------------------------------------------------*/
+    for (size_t i = 0; i < array->length; i++) {
+        patolette__ColorCluster *cluster = patolette__ColorClusterArray_index(
+            array,
+            i
+        );
+        patolette__ColorCluster_destroy(cluster);
+    }
+    patolette__ColorClusterArray_destroy(array);
 }
 
 /*----------------------------------------------------------------------------

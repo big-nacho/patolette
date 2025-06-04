@@ -96,6 +96,7 @@ patolette__Matrix2D *get_vcov(
         }
     }
 
+    patolette__Matrix2D_destroy(centered);
     return vcov;
 }
 
