@@ -61,7 +61,7 @@ import numpy as np
 from PIL import Image
 from patolette import quantize, ColorSpace_ICtCp
 
-path = 'path/to/image'
+path = 'image.png'
 
 # Read image
 img = Image.open(path)
@@ -70,7 +70,7 @@ width = img.width
 height = img.height
 img = np.asarray(img)
 
-# Get colors
+# Get colors (they should be in sRGB[0, 1] color space)
 colors = img.reshape((-1, 3)).astype(np.float64)
 colors /= 255
 
@@ -92,10 +92,12 @@ if not success:
     print(message)
     exit()
 
+# Palette is returned in sRGB[0, 1] color space
 palette *= 255
 palette = np.clip(palette, 0, 255)
 palette = palette.astype(np.uint8)
 
+# Save result
 quantized = palette[palette_map].reshape(img.shape)
 quantized = Image.fromarray(quantized)
 quantized.save('result.png')
@@ -118,5 +120,7 @@ Three different color spaces are supported (used for generating the quantized co
 The *bias* parameter can be used to mitigate this issue. When non-zero, an extra step is introduced in the pipeline. A [saliency map](https://en.wikipedia.org/wiki/Saliency_map#:~:text=In%20computer%20vision%2C%20a%20saliency,an%20otherwise%20opaque%20ML%20model.) is computed and used to weight samples based on their visual importance. Below is a quick demo of non-biased (top-right) vs biased (bottom-left) quantization.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/ea50bad0-657f-4899-8371-fbe30df4b15d" />
+  <img src="https://github.com/user-attachments/assets/04482ad5-9bf5-40ce-b9b8-5ef434d49a72" />
 </p>
+
+Biased quantization can improve results significantly for images that contain sections that are tiny but visually striking.
