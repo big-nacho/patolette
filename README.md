@@ -120,7 +120,7 @@ Three different color spaces are supported (used for generating the quantized co
 The *bias* parameter can be used to mitigate this issue. When non-zero, an extra step is introduced in the pipeline. A [saliency map](https://en.wikipedia.org/wiki/Saliency_map#:~:text=In%20computer%20vision%2C%20a%20saliency,an%20otherwise%20opaque%20ML%20model.) is computed and used to weight samples based on their visual importance. Below is a quick demo of non-biased (top-right) vs biased (bottom-left) quantization.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/04482ad5-9bf5-40ce-b9b8-5ef434d49a72" />
+  <img src="https://github.com/user-attachments/assets/e05a2d34-1ee0-43e4-aed8-82a562b004dc" />
 </p>
 
 Biased quantization can improve results significantly for images that contain sections that are tiny but visually striking.
