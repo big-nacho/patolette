@@ -1,16 +1,16 @@
-***patolette*** is a **Python / C** color quantization and dithering library.
+***patolette*** is a **C / Python** color quantization and dithering library.
 
 At its core, it implements a weighted variant of Xiaolin Wu's PCA-based quantizer (not to be confused with the popular one from _Graphics Gems vol. II_, which is already available [here](https://gist.github.com/bert/1192520)).
 
 The library is at its very early stages and in need of battle-testing and improvements, but it's already very usable.
 
 ## Installation
-A **PyPI** package (+binary distributions) is in the works. Until then, installation is manual, but it should hopefully be painless 🤞
+A **PyPI** package is not yet available. Until then, installation is manual, but it should hopefully be painless 🤞
 
 If you do face any obstacles building / installing, please submit an issue! 🙏
 
  **Note for x86**\
-*patolette* ships a slightly modified version of [faiss](https://github.com/facebookresearch/faiss) to aid with an optional *KMeans* refinement step. You can use the `pyproject.toml` file to specify an instruction set extension for it to be built with. If your CPU supports any of the **AVX** extensions, you can **drastically** increase *KMeans* performance.
+*patolette* ships a slightly modified version of [faiss](https://github.com/facebookresearch/faiss) to aid with an optional *KMeans* refinement step. You can use the `pyproject.toml` file to specify an instruction set extension for it to be built with. If your CPU supports any of the **AVX** extensions, you can drastically increase *KMeans* performance.
 
 The following will build the wheel and install it in the currently active virtual environment.
 
@@ -55,7 +55,7 @@ pip install .
 ```
 
 ## Basic Usage
-*patolette* doesn't take care of image decoding / encoding. You need to do that yourself. In the below example the [Pillow](https://pillow.readthedocs.io/en/stable/) library is used, but you can use whatever you want.
+The library doesn't take care of image decoding / encoding. You need to do that yourself. In the below example the [Pillow](https://pillow.readthedocs.io/en/stable/) library is used, but you can use whatever you want.
 ```python
 import numpy as np
 from PIL import Image
@@ -106,9 +106,9 @@ quantized.save('result.png')
 You can find more details on each parameter in the doc-strings for the `quantize` function.
 
 ## Color Spaces
-Three different color spaces are supported (used for generating the quantized color palette). The following are rules of thumb you can go by, but experiment and see what works best for you:
+Three different color spaces are supported for the palette generation step. The following are rules of thumb you can go by, but experiment and see what works best for you:
 
-**CIEL\*u\*v\***: generates exceptionally high quality color palettes, and it's the best choice for very low color counts. However, it creates the least smooth results, and performs poorly on some hues.
+**CIEL\*u\*v\***: generates exceptionally high quality color palettes and it's the best choice for very low color counts. However, it creates the least smooth results, and performs poorly on some hues.
 
 **sRGB**: outputs relatively smooth results (and it's the most consistent in this regard) but it generates the lowest quality color palettes, and it's not that well suited for lower color counts.
 
