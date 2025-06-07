@@ -139,3 +139,6 @@ One of the main priorities for `v1` is to decrease memory usage, but at the mome
 <p align="center">
   <img src="https://github.com/user-attachments/assets/7c2800cd-9334-431c-89aa-e29548346c0c" style="width:100%;"; />
 </p>
+
+### Using From C
+The library can be called from C, but support for biased quantization via saliency maps is not there as of now. You can however supply your own weights if you want.
