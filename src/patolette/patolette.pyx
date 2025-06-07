@@ -22,7 +22,6 @@ cdef extern from 'patolette.h':
         bint palette_only
         int kmeans_niter
         size_t kmeans_max_samples
-        double bias
         patolette__ColorSpace color_space
 
     void patolette(
@@ -200,7 +199,7 @@ def mbd(cnp.ndarray[cython.float, ndim = 2] img, int iter):
 
     return D
 
-def get_weights(cnp.ndarray[cython.double, ndim = 3] img, double bias):
+def get_weights(cnp.ndarray[cython.double, ndim = 3] img, double tile_size):
     img_mean = np.mean(img, axis = 2).astype(np.float32)
     sal = mbd(img_mean, 3)
 
@@ -310,7 +309,7 @@ def get_weights(cnp.ndarray[cython.double, ndim = 3] img, double bias):
     fv = np.vectorize(f)
     sal = sal / np.max(sal)
     sal = fv(sal)
-    return 1 + np.reshape(sal, -1) * bias * rows * cols
+    return 1 + np.reshape(sal, -1) ** 2 * (rows * cols) / tile_size ** 2
 
 '''----------------------------------------------------------------------------
    Saliency END
@@ -327,7 +326,7 @@ ColorSpace_ICtCp = patolette__ColorSpace.patolette__ICtCp
 
 color_mismatch = "The number of colors doesn't match the supplied width and height."
 bad_channel_count = 'Expected colors to be in sRGB[0, 1] space. Channel count mismatch: {} found.'
-bad_bias = 'bias parameter expected to be in the range [0, 1]'
+bad_tile_size = 'tile_size parameter expected to be in the range [0, inf]'
 
 def quantize(
     size_t width,
@@ -337,7 +336,7 @@ def quantize(
     bint dither = True,
     bint palette_only = False,
     patolette__ColorSpace color_space = patolette__ColorSpace.patolette__ICtCp,
-    double bias = 5 * 1e-6,
+    double tile_size = 512,
     int kmeans_niter = 32,
     size_t kmeans_max_samples = 512 ** 2
 ):
@@ -345,7 +344,7 @@ def quantize(
     color_count = shape[0]
     channel_count = shape[1]
 
-    # Some quick validations
+    # Some quick validations that can't be done in C
 
     if channel_count != 3:
         return (
@@ -363,12 +362,12 @@ def quantize(
             color_mismatch
         )
 
-    if bias < 0 or bias > 1:
+    if tile_size < 0:
         return (
             False,
             None,
             None,
-            bad_bias
+            bad_tile_size
         )
 
     cdef patolette__QuantizationOptions opts
@@ -376,7 +375,6 @@ def quantize(
     opts.palette_only = palette_only
     opts.kmeans_niter = kmeans_niter
     opts.kmeans_max_samples = kmeans_max_samples
-    opts.bias = bias
     opts.color_space = color_space
 
     cdef cython.double *color_data_pointer = cython.NULL
@@ -403,9 +401,9 @@ def quantize(
 
     cdef cnp.ndarray[cython.double, ndim = 3] img
     cdef cython.double[::1] weights
-    if (bias > 0):
+    if (tile_size > 0):
         img = np.reshape(colors, (height, width, 3))
-        weights = get_weights(img, bias)
+        weights = get_weights(img, tile_size)
 
         if (weights is not None):
             weight_data_pointer = &weights[0]
