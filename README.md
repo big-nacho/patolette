@@ -5,7 +5,7 @@ At its core, it implements a weighted variant of Xiaolin Wu's PCA-based quantize
 Some of its key features are:
 - Avoids axis-aligned subdivisions.
 - Supports the **CIEL\*u\*v\*** and **ICtCp** color spaces.
-- Optional use of saliency maps to give higher priority to areas that stand out visually.
+- Optional use of saliency maps to give higher weight to areas that stand out visually.
 - Optional, blazing fast *KMeans* refinement.
 
 The library is at its very early stages and in need of battle-testing and improvements, but it's already very usable.
@@ -126,7 +126,7 @@ Three different color spaces are supported for the palette generation step. The 
 The *bias* parameter can be used to mitigate this issue. When non-zero, an extra step is introduced in the pipeline. A [saliency map](https://en.wikipedia.org/wiki/Saliency_map#:~:text=In%20computer%20vision%2C%20a%20saliency,an%20otherwise%20opaque%20ML%20model.) is computed and used to weight samples based on their visual importance. Below is a quick demo of non-biased (top-right) vs biased (bottom-left) quantization.
 
 <p align="center">
-  <img width="100%" src="https://github.com/user-attachments/assets/cf0cda53-947e-406d-ac9e-831c9a875899" />
+  <img width="100%" src="https://github.com/user-attachments/assets/8ad4784c-bfc6-4d0d-8130-acf8e5e4ebf2" />
 </p>
 
 Biased quantization can improve output quality significantly for images that contain sections that are relatively small but attention-grabbing. It can also enhance the quality of generated palettes for lower color counts.
@@ -134,11 +134,29 @@ Biased quantization can improve output quality significantly for images that con
 ## Caveats
 
 ### Memory Usage
-One of the main priorities for `v1` is to decrease memory usage, but at the moment it is quite high. If you limit yourself to quantizing images up to **4k** resolution, you're on the very safe side, but if you go above **6k** you may start going into the danger zone depending on your system. Below is a chart depicting memory usage for different resolutions.
+The main priority for `v1` is to reduce memory consumption, at the moment it is quite high. If you limit yourself to quantizing images up to **4k** resolution you're on the very safe side, but if you go above **6k** you may start going into the danger zone depending on your system. Below is a chart depicting memory usage for different resolutions.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/7c2800cd-9334-431c-89aa-e29548346c0c" style="width:100%;"; />
+  <img src="https://github.com/user-attachments/assets/7c2800cd-9334-431c-89aa-e29548346c0c" style="width:100%;" />
 </p>
 
 ### Using From C
-The library can be called from C, but support for biased quantization via saliency maps is not there as of now. You can however supply your own weights if you want.
+Until `v1` is ready, the C API is incomplete. Mainly, support for biased quantization via saliency maps is not there, so you won't find a *bias* parameter. It does however allow you to supply your own weights if you want.
+
+## Acknowledgements
+This library stands on the following works / projects.
+
+*Color Quantization by Dynamic Programming and Principal Analysis, Xiaolin Wu* [[1]](https://dl.acm.org/doi/pdf/10.1145/146443.146475)
+
+*Minimum Barrier Salient Object Detection at 80 FPS, Jianming Zhang, Stan Sclaroff, Zhe Lin, Xiaohui Shen, Brian Price, Randomír Mech* [[2]](https://openaccess.thecvf.com/content_iccv_2015/papers/Zhang_Minimum_Barrier_Salient_ICCV_2015_paper.pdf)
+
+*Riemersma Dithering* [[3]](https://www.compuphase.com/riemer.htm)
+
+[faiss](https://github.com/facebookresearch/faiss)
+
+[flann](https://github.com/flann-lib/flann)
+
+[OpenBLAS](https://github.com/OpenMathLib/OpenBLAS)
+
+---
+Thanks, Anna ❤️
