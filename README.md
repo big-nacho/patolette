@@ -126,7 +126,7 @@ Three different color spaces are supported for the palette generation step. The 
 The *bias* parameter can be used to mitigate this issue. When non-zero, an extra step is introduced in the pipeline. A [saliency map](https://en.wikipedia.org/wiki/Saliency_map#:~:text=In%20computer%20vision%2C%20a%20saliency,an%20otherwise%20opaque%20ML%20model.) is computed and used to weight samples based on their visual importance. Below is a quick demo of non-biased (top-right) vs biased (bottom-left) quantization.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/cf0cda53-947e-406d-ac9e-831c9a875899" />
+  <img width="100%" src="https://github.com/user-attachments/assets/cf0cda53-947e-406d-ac9e-831c9a875899" />
 </p>
 
 Biased quantization can improve output quality significantly for images that contain sections that are relatively small but attention-grabbing. It can also enhance the quality of generated palettes for lower color counts.
@@ -137,5 +137,5 @@ Biased quantization can improve output quality significantly for images that con
 One of the main priorities for `v1` is to decrease memory usage, but at the moment it is quite high. If you limit yourself to quantizing images up to **4k** resolution, you're on the very safe side, but if you go above **6k** you may start going into the danger zone depending on your system. Below is a chart depicting memory usage for different resolutions.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/7c2800cd-9334-431c-89aa-e29548346c0c" />
+  <img src="https://github.com/user-attachments/assets/7c2800cd-9334-431c-89aa-e29548346c0c" style="width:100%;"; />
 </p>
