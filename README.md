@@ -2,6 +2,12 @@
 
 At its core, it implements a weighted variant of Xiaolin Wu's PCA-based quantizer (not to be confused with the popular one from _Graphics Gems vol. II_, which is already available [here](https://gist.github.com/bert/1192520)).
 
+Some of its key features are:
+- Avoids axis-aligned subdivisions.
+- Supports the **CIEL\*u\*v\*** and **ICtCp** color spaces.
+- Optional use of saliency maps to give higher priority to areas that stand out visually.
+- Optional, blazing fast *KMeans* refinement.
+
 The library is at its very early stages and in need of battle-testing and improvements, but it's already very usable.
 
 ## Installation
@@ -103,14 +109,14 @@ quantized = Image.fromarray(quantized)
 quantized.save('result.png')
 ```
 
-You can find more details on each parameter in the doc-strings for the `quantize` function.
+You can find more details on each parameter in the docstrings for the `quantize` function.
 
 ## Color Spaces
 Three different color spaces are supported for the palette generation step. The following are rules of thumb you can go by, but experiment and see what works best for you:
 
 **CIEL\*u\*v\***: generates exceptionally high quality color palettes and it's the best choice for very low color counts. However, it creates the least smooth results, and performs poorly on some hues.
 
-**sRGB**: outputs relatively smooth results (and it's the most consistent in this regard) but it generates the lowest quality color palettes, and it's not that well suited for lower color counts.
+**sRGB**: outputs relatively smooth results (and it's the most consistent in this regard) but it generates the lowest quality color palettes and it's not that well suited for lower color counts.
 
 **ICtCp** (default): a good tradeoff between the two former. Generally, it generates slightly smoother results than **sRGB**, but it's a little bit less consistent at that, and the quality of the color palettes it generates is quite good.
 
@@ -123,4 +129,13 @@ The *bias* parameter can be used to mitigate this issue. When non-zero, an extra
   <img src="https://github.com/user-attachments/assets/cf0cda53-947e-406d-ac9e-831c9a875899" />
 </p>
 
-Biased quantization can improve results significantly for images that contain sections that are tiny but visually striking.
+Biased quantization can improve output quality significantly for images that contain sections that are relatively small but attention-grabbing. It can also enhance the quality of generated palettes for lower color counts.
+
+## Caveats
+
+### Memory Usage
+One of the main priorities for `v1` is to decrease memory usage, but at the moment it is quite high. If you limit yourself to quantizing images up to **4k** resolution, you're on the very safe side, but if you go above **6k** you may start going into the danger zone depending on your system. Below is a chart depicting memory usage for different resolutions.
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/7c2800cd-9334-431c-89aa-e29548346c0c" />
+</p>
