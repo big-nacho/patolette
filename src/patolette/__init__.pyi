@@ -46,7 +46,8 @@ def quantize(
         Number of Kmeans refinment iterations to perform. Anything <= 0 yields no KMeans
         refinement. Default: *32*
     :param kmeans_max_samples:
-        Maximum number of samples to use when performing KMeans refinement. Default: *512 ** 2*
+        Maximum number of samples to use when performing KMeans refinement. There's a hard minimum
+        of 256 ** 2. Default: *512 ** 2*
     :return out:
         - out[0]: Success flag.
 
