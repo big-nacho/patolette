@@ -159,7 +159,7 @@ Below is a quick showcase.<br />
 ## Caveats
 
 ### Memory Usage
-The main priority for `v1` is to reduce memory consumption, at the moment it is quite high. If you limit yourself to quantizing images up to **4k** resolution you're on the pretty safe side, but if you go above **6k** you may start going into the danger zone depending on your system. Below is a chart depicting memory usage for different resolutions.
+The main priority for `v1` is to reduce memory consumption, at the moment it is quite high. If you limit yourself to quantizing images up to **4k** resolution you're on the pretty safe side, but if you go above **6k** you may start going into the danger zone depending on your system. Below is a chart depicting memory usage for different resolutions (*including* the space needed for the storage of the input image).
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/7c2800cd-9334-431c-89aa-e29548346c0c" style="width:100%;" />
