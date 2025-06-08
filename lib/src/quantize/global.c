@@ -241,7 +241,7 @@ static patolette__IndexArray *get_principal_quantizer(
 
     patolette__IndexArray *result = l_chain(L, 1, N);
 
-    for (size_t k = 2; k <= max_k; k++) {
+    for (size_t k = 2; k <= min(max_k, palette_size); k++) {
         if (
             should_terminate(
                 result,

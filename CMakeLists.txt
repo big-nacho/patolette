@@ -117,6 +117,7 @@ target_link_directories(patolette PRIVATE ${FLANN_LIBRARY_DIRS})
 target_include_directories(patolette PRIVATE ${FLANN_INCLUDE_DIRS})
 
 set(BUILD_SHARED_LIBS OFF)
+set(FAISS_OPT_LEVEL ${OPT_LEVEL})
 add_subdirectory(lib/faiss)
 target_link_libraries(patolette PRIVATE faiss_c)
 target_include_directories(patolette PRIVATE lib)
