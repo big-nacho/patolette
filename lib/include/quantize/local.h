@@ -11,5 +11,6 @@
 
 patolette__ColorClusterArray *patolette__LQ_quantize(
     patolette__ColorClusterArray *clusters,
-    size_t palette_size
+    size_t palette_size,
+    bool verbose
 );

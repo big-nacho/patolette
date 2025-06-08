@@ -16,6 +16,7 @@ typedef struct patolette__QuantizationOptions {
     patolette__ColorSpace color_space;
     int kmeans_niter;
     size_t kmeans_max_samples;
+    bool verbose;
 } patolette__QuantizationOptions;
 
 void patolette(

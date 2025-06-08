@@ -114,6 +114,7 @@ patolette__QuantizationOptions *patolette_create_default_options() {
     options->color_space = patolette__ICtCp;
     options->kmeans_niter = 32;
     options->kmeans_max_samples = SQ(512);
+    options->verbose = false;
     return options;
 }
 
@@ -180,6 +181,7 @@ void patolette(
     patolette__ColorSpace color_space = options->color_space;
     int kmeans_niter = options->kmeans_niter;
     size_t kmeans_max_samples = options->kmeans_max_samples;
+    bool verbose = options->verbose;
 
     patolette__Matrix2D *colors = patolette__Matrix2D_init(
         width * height,
@@ -203,6 +205,10 @@ void patolette(
         patolette__COLOR_sRGB_Matrix_to_ICtCp_Matrix(colors);
     }
 
+    if (verbose) {
+        printf("patolette ======== Palette generation \n");
+    }
+
     patolette__ColorClusterArray *gq_clusters = patolette__GQ_quantize(
         colors,
         weights,
@@ -217,9 +223,14 @@ void patolette(
         return;
     }
 
+    if (verbose) {
+        printf("patolette ======== Base cluster count: %zu\n", gq_clusters->length);
+    }
+
     patolette__ColorClusterArray *clusters = patolette__LQ_quantize(
         gq_clusters,
-        palette_size
+        palette_size,
+        verbose
     );
 
     if (clusters == NULL) {
@@ -234,12 +245,17 @@ void patolette(
 
     patolette__Matrix2D *palette_colors;
     if (kmeans_niter > 0) {
+        if (verbose) {
+            printf("patolette ======== KMeans refinement\n");
+        }
+
         palette_colors = patolette__PALETTE_get_refined_palette(
             colors,
             weights,
             clusters,
             kmeans_niter,
-            kmeans_max_samples
+            kmeans_max_samples,
+            verbose
         );
     }
 
@@ -249,6 +265,10 @@ void patolette(
 
     if (!palette_only) {
         if (dither) {
+
+            if (verbose) {
+                printf("patolette ======== Dithering\n");
+            }
 
             if (color_space == patolette__CIELuv) {
                 patolette__COLOR_CIELuv_Matrix_to_Linear_Rec2020_Matrix(colors);
@@ -277,6 +297,10 @@ void patolette(
             patolette__COLOR_Linear_Rec2020_Matrix_to_sRGB_Matrix(palette_colors);
         }
         else {
+            if (verbose) {
+                printf("patolette ======== NN mapping\n");
+            }
+
             if (color_space == patolette__CIELuv) {
                 // This is pretty ugly.
                 // TODO: implement more direct conversions

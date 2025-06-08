@@ -317,7 +317,8 @@ static size_t find_best_cluster_index(
 
 patolette__ColorClusterArray *patolette__LQ_quantize(
     patolette__ColorClusterArray *clusters,
-    size_t palette_size
+    size_t palette_size,
+    bool verbose
 ) {
 /*----------------------------------------------------------------------------
     Splits a set of K color clusters into N > K color clusters.
@@ -381,6 +382,11 @@ patolette__ColorClusterArray *patolette__LQ_quantize(
         if (best_cluster_index < clusters->length) {
             patolette__ColorClusterArray_index(clusters, best_cluster_index) = NULL;
         }
+
+        if (verbose) {
+            printf("patolette ======== Processed colors: %zu\r", i + 1);
+            fflush(stdout);
+        }
     }
 
     for (size_t i = 0; i < children->length; i++) {
@@ -389,6 +395,11 @@ patolette__ColorClusterArray *patolette__LQ_quantize(
     }
 
     ClusterPairArray_destroy(children);
+
+    if (verbose) {
+        printf("\n");
+    }
+
     return result;
 }
 

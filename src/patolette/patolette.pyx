@@ -20,9 +20,10 @@ cdef extern from 'patolette.h':
     ctypedef struct patolette__QuantizationOptions:
         bint dither
         bint palette_only
+        patolette__ColorSpace color_space
         int kmeans_niter
         size_t kmeans_max_samples
-        patolette__ColorSpace color_space
+        bint verbose
 
     void patolette(
         size_t width,
@@ -338,7 +339,8 @@ def quantize(
     patolette__ColorSpace color_space = patolette__ColorSpace.patolette__ICtCp,
     double tile_size = 512,
     int kmeans_niter = 32,
-    size_t kmeans_max_samples = 512 ** 2
+    size_t kmeans_max_samples = 512 ** 2,
+    bint verbose = False
 ):
     shape = colors.shape
     color_count = shape[0]
@@ -376,6 +378,7 @@ def quantize(
     opts.kmeans_niter = kmeans_niter
     opts.kmeans_max_samples = kmeans_max_samples
     opts.color_space = color_space
+    opts.verbose = verbose
 
     cdef cython.double *color_data_pointer = cython.NULL
     cdef cython.double *weight_data_pointer = cython.NULL
@@ -402,6 +405,8 @@ def quantize(
     cdef cnp.ndarray[cython.double, ndim = 3] img
     cdef cython.double[::1] weights
     if (tile_size > 0):
+        if (verbose):
+            print('patolette ======== Generating saliency map')
         img = np.reshape(colors, (height, width, 3))
         weights = get_weights(img, tile_size)
 
