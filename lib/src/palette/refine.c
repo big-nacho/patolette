@@ -36,7 +36,8 @@ static void kmeans(
     size_t center_count,
     size_t sample_count,
     int niter,
-    size_t max_samples
+    size_t max_samples,
+    bool verbose
 );
 
 static float *get_centers(const patolette__ColorClusterArray *clusters);
@@ -59,7 +60,8 @@ static void kmeans(
     size_t center_count,
     size_t sample_count,
     int niter,
-    size_t max_samples
+    size_t max_samples,
+    bool verbose
 ) {
 /*----------------------------------------------------------------------------
     Runs KMeans.
@@ -76,7 +78,7 @@ static void kmeans(
     faiss_ClusteringParameters_init(&params);
     params.niter = niter;
     params.nredo = 1;
-    params.verbose = false;
+    params.verbose = verbose;
     params.spherical = false;
     params.int_centroids = false;
     params.update_index = false;
@@ -165,7 +167,8 @@ patolette__Matrix2D *patolette__PALETTE_get_refined_palette(
     const patolette__Vector *weights,
     const patolette__ColorClusterArray *clusters,
     int niter,
-    size_t max_samples
+    size_t max_samples,
+    bool verbose
 ) {
 /*----------------------------------------------------------------------------
     Refines a color palette via KMeans iteration.
@@ -192,7 +195,8 @@ patolette__Matrix2D *patolette__PALETTE_get_refined_palette(
         clusters->length,
         colors->rows,
         niter,
-        max_samples
+        max_samples,
+        verbose
     );
 
     patolette__Matrix2D *palette = patolette__Matrix2D_init(

@@ -4,7 +4,7 @@ file(READ VERSION.txt PROJECT_VERSION)
 project(patolette VERSION ${PROJECT_VERSION} LANGUAGES C CXX)
 
 # One of "generic", "avx2", "avx512", "avx512_spr", "sve"
-option(OPT_LEVEL "Optimization level" "generic")
+set(OPT_LEVEL "generic" CACHE STRING "Optimization level")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -112,7 +112,7 @@ endif()
 
 find_package(FLANN)
 if (${FLANN_FOUND})
-  target_link_libraries(patolette PRIVATE flann::flann)
+  target_link_libraries(patolette PRIVATE FLANN::FLANN)
   target_include_directories(patolette PRIVATE ${FLANN_INCLUDE_DIRS})
 else()
   find_package(PkgConfig REQUIRED)
@@ -125,7 +125,13 @@ endif()
 set(BUILD_SHARED_LIBS OFF)
 set(FAISS_OPT_LEVEL ${OPT_LEVEL})
 add_subdirectory(lib/faiss)
-target_link_libraries(patolette PRIVATE "faiss_c_${OPT_LEVEL}")
+
+set(FAISS_TARGET_NAME "faiss_c")
+if (NOT "${OPT_LEVEL}" STREQUAL "generic")
+  set(FAISS_TARGET_NAME "faiss_c_${OPT_LEVEL}")
+endif ()
+
+target_link_libraries(patolette PRIVATE "${FAISS_TARGET_NAME}")
 target_include_directories(patolette PRIVATE lib)
 
 target_include_directories(patolette PRIVATE lib/include)
