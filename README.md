@@ -1,3 +1,11 @@
+<p align="center">
+    <img src="https://github.com/user-attachments/assets/c35f17b7-6c1f-499c-aa79-bbe9301fc6d2" width="150px" />
+</p>
+<p align="center">
+    <img src="https://img.shields.io/badge/version-v0.0.1-blue" />
+    <img src="https://img.shields.io/badge/beta-purple" />
+</p>
+
 ***patolette*** is a **C / Python** color quantization and dithering library.
 
 At its core, it implements a weighted variant of Xiaolin Wu's PCA-based quantizer (not to be confused with the popular one from _Graphics Gems vol. II_, which is already available [here](https://gist.github.com/bert/1192520)).
@@ -15,12 +23,17 @@ A **PyPI** package is not yet available. Until then, installation is manual, but
 
 If you do face any obstacles building / installing, please submit an issue! 🙏
 
- **Note for x86**\
-*patolette* ships a slightly modified version of [faiss](https://github.com/facebookresearch/faiss) to aid with an optional *KMeans* refinement step. You can use the `pyproject.toml` file to specify an instruction set extension for it to be built with. If your CPU supports any of the **AVX** extensions, you can drastically increase *KMeans* performance.
+ ### Note for x86
+*patolette* ships a slightly modified version of [faiss](https://github.com/facebookresearch/faiss) to aid with an optional *KMeans* refinement step. You can use the `CMAKE_ARGS` environment variable to specify an instruction set extension for it to be built with. If your CPU supports any of the **AVX** extensions, you can drastically increase *KMeans* performance.
+
+For example, if your CPU supports **AVX512**
+```shell
+export CMAKE_ARGS="-DOPT_LEVEL=avx512"
+```
 
 The following will build the wheel and install it in the currently active virtual environment.
 
-#### Linux (Debian)
+### Linux (Debian)
 
 ```shell
 # Clone repository
@@ -29,6 +42,10 @@ cd patolette
 
 # Install dependencies
 apt install libopenblas-openmp-dev libflann-dev
+
+# Optional: set OPT_LEVEL (check Note for x86 section)
+# Accepted values are "generic", "avx2", "avx512", "avx512_spr", "sve"
+export CMAKE_ARGS="-DOPT_LEVEL=avx512"
 
 # Build and install wheel
 pip install .
@@ -39,7 +56,7 @@ sudo update-alternatives --set libblas.so.3-x86_64-linux-gnu /usr/lib/x86_64-lin
 sudo update-alternatives --set liblapack.so.3-x86_64-linux-gnu /usr/lib/x86_64-linux-gnu/openblas-openmp/liblapack.so.3
 ```
 
-#### macOS
+### macOS
 ```shell
 # Clone repository
 git clone https://github.com/big-nacho/patolette.git
@@ -62,6 +79,8 @@ pip install .
 
 ## Basic Usage
 The library doesn't take care of image decoding / encoding. You need to do that yourself. In the below example the [Pillow](https://pillow.readthedocs.io/en/stable/) library is used, but you can use whatever you want.
+
+You can find more details on each parameter in the docstrings for the `quantize` function.
 ```python
 import numpy as np
 from PIL import Image
@@ -86,11 +105,12 @@ success, palette, palette_map, message = quantize(
     height,
     colors,
     256,
+    # The following are all defaults
     dither=True,
     palette_only=False,
     color_space=ColorSpace_ICtCp,
-    bias=1e-6,
-    kmeans_niter=256,
+    tile_size=512,
+    kmeans_niter=32,
     kmeans_max_samples=512 ** 2
 )
 
@@ -104,12 +124,12 @@ palette = np.clip(palette, 0, 255)
 palette = palette.astype(np.uint8)
 
 # Save result
+# NOTE: if you're trying to reduce file size,
+# you may want to save a palette-based PNG instead
 quantized = palette[palette_map].reshape(img.shape)
 quantized = Image.fromarray(quantized)
 quantized.save('result.png')
 ```
-
-You can find more details on each parameter in the docstrings for the `quantize` function.
 
 ## Color Spaces
 Three different color spaces are supported for the palette generation step. The following are rules of thumb you can go by, but experiment and see what works best for you:
@@ -120,28 +140,36 @@ Three different color spaces are supported for the palette generation step. The 
 
 **ICtCp** (default): a good tradeoff between the two former. Generally, it generates slightly smoother results than **sRGB**, but it's a little bit less consistent at that, and the quality of the color palettes it generates is quite good.
 
-## Bias
-*patolette* optimizes against the sum of squared deviations when generating color palettes (the same way *KMeans* and other quantizers of similar nature do). This however comes with the known issue of large clusters dominating small, well defined ones. 
+## Tile Size
+*patolette* optimizes against size-weighted variance during the palette generation stage (the same way *KMeans* and other quantizers of similar nature do). This however comes with the known issue of large clusters dominating small, well defined ones.
 
-The *bias* parameter can be used to mitigate this issue. When non-zero, an extra step is introduced in the pipeline. A [saliency map](https://en.wikipedia.org/wiki/Saliency_map#:~:text=In%20computer%20vision%2C%20a%20saliency,an%20otherwise%20opaque%20ML%20model.) is computed and used to weight samples based on their visual importance. Below is a quick demo of non-biased (top-right) vs biased (bottom-left) quantization.
+The `tile_size` parameter can be used to mitigate this issue. When non-zero, an extra step is introduced in the pipeline. A [saliency map](https://en.wikipedia.org/wiki/Saliency_map#:~:text=In%20computer%20vision%2C%20a%20saliency,an%20otherwise%20opaque%20ML%20model.) is computed and used to weight samples based on how much they stand out visually. The lower the tile size, the stronger the effect. The default tile size is `512`.
+
+Below is a quick showcase.<br />
+
+*top-left*: input image<br />
+*top-right*: saliency map<br />
+*bottom-left*: quantized with no saliency map<br />
+*bottom-right*: quantized with saliency map.
 
 <p align="center">
   <img width="100%" src="https://github.com/user-attachments/assets/8ad4784c-bfc6-4d0d-8130-acf8e5e4ebf2" />
 </p>
 
-Biased quantization can improve output quality significantly for images that contain sections that are relatively small but attention-grabbing. It can also enhance the quality of generated palettes for lower color counts.
-
 ## Caveats
 
 ### Memory Usage
-The main priority for `v1` is to reduce memory consumption, at the moment it is quite high. If you limit yourself to quantizing images up to **4k** resolution you're on the very safe side, but if you go above **6k** you may start going into the danger zone depending on your system. Below is a chart depicting memory usage for different resolutions.
+The main priority for `v1` is to reduce memory consumption, at the moment it is quite high. If you limit yourself to quantizing images up to **4k** resolution you're on the pretty safe side, but if you go above **6k** you may start going into the danger zone depending on your system. Below is a chart depicting memory usage for different resolutions.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/7c2800cd-9334-431c-89aa-e29548346c0c" style="width:100%;" />
 </p>
 
 ### Using From C
-Until `v1` is ready, the C API is incomplete. Mainly, support for biased quantization via saliency maps is not there, so you won't find a *bias* parameter. It does however allow you to supply your own weights if you want.
+Until `v1` is ready, the C API is incomplete. Mainly, support for weighted quantization via saliency maps is not there, so you won't find a `tile_size` parameter. It does however allow you to supply your own weights if you want.
+
+### No RGBA support
+For the time being, images with transparency are not supported, though if you have the pretty common use case of subject + fully transparent background, you can always fake it yourself by using a mask, but results may not be optimal.
 
 ## Acknowledgements
 This library stands on the following works / projects.

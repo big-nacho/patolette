@@ -36,7 +36,10 @@ patolette__Matrix2D *patolette__Matrix2D_extract_rows(
     const patolette__Matrix2D *m,
     const patolette__IndexArray *rows
 );
-patolette__Vector *patolette__Matrix2D_get_vector_mean(const patolette__Matrix2D *m);
+patolette__Vector *patolette__Matrix2D_get_vector_mean(
+    const patolette__Matrix2D *m,
+    const patolette__Vector *weights
+);
 
 // DEBUG
 void patolette__Matrix2D_print(patolette__Matrix2D *m);

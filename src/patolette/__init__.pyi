@@ -3,8 +3,7 @@ from typing import Tuple, Optional
 
 ColorSpace_CIELuv: int
 ColorSpace_ICtCp: int
-Heuristic_Wu: int
-Heuristic_Patolette: int
+ColorSpace_sRGB: int
 
 def quantize(
     width: int,
@@ -13,40 +12,50 @@ def quantize(
     palette_size: int,
     dither: Optional[bool],
     palette_only: Optional[bool],
-    kmeans_niter: Optional[int],
     color_space: Optional[ColorSpace_CIELuv, ColorSpace_ICtCp],
-    heuristic: Optional[Heuristic_Wu, Heuristic_Patolette]
+    tile_size: Optional[float],
+    kmeans_niter: Optional[int],
+    kmeans_max_samples: Optional[int]
 ) -> int:
     """
     Quantizes color data.
 
-    Parameters
-    ----------
-        width : int
-                The width of the source image.
-        height : int
-                The height of the source image.
-        colors : ndarray[np.float64]
-                A (width * height, 3) array containing the colors of the source image,
-                scanned from left-to-right, top-to-bottom. Colors should be provided in *sRGB[0, 1]* space.
-        palette_size : int
-                The desired palette size for the quantized image.
-        options : QuantizationOptions, optional
-                Quantization options.
-                - dither: Whether dithering should be used. Default: *True*
-                - palette_only: When *True*, only a color palette is generated, and palette
-                mapping is omitted. Default: *False*
-                - variance_stabilizer_factor: Controls the intensity of the variance stabilizer.
-                                              Higher values can help quantize small, visually striking
-                                              areas at the expense of overall quantization quality.
-                - variance_tabilizer_kickoff: The quantization step at which the variance
-                                              stabilizer starts to have an effect.
-    Returns
-    ----------
-        out : [bool, ndarray[np.float64] | None, ndarray[np.float64] | None]
-            - out[0]: Success flag.
-            - out[1]: A (palette_size, 3) array describing the generated color palette in *sRGB[0, 1]* space.
-                The array entries may not all be relveant, e.g *width* * *height* < *palette_size*. Non-relevant
-                entries take the value of an out-of-range *sRGB* color, i.e [-1, -1, -1].
-            - out[2]: A (width * height) array mapping each entry in *colors* to an entry in *out[1]*.
+    :param width:
+        The width of the source image.
+    :param height:
+        The height of the source image.
+    :param colors:
+        A (width * height, 3) array containing the colors of the source image,
+        scanned from left-to-right, top-to-bottom. Colors should be provided in *sRGB[0, 1]* space.
+    :param palette_size:
+        The desired palette size for the quantized image.
+    :param dither:
+        Whether dithering should be used. Default: *True*
+    :param palette_only:
+        When *True*, only a color palette is generated, and palette
+        mapping is omitted. Default: *False*
+    :param color_space:
+        The color space to use for quantization. Only used for palette
+        generation; dithering is always performed in Linear Rec2020,
+        nearest neighbour mapping (when dithering is disabled) in ICtCp. Default: *ICtCp*
+    :param tile_size:
+            Tile size in the range [0, inf]. When tile_size > 0 is specified,
+            a saliency map is computed, and visually striking areas are given
+            higher weight. The lower the tile size, the more exaggerated the effect. Default: *512*
+    :param kmeans_niter:
+        Number of Kmeans refinment iterations to perform. Anything <= 0 yields no KMeans
+        refinement. Default: *32*
+    :param kmeans_max_samples:
+        Maximum number of samples to use when performing KMeans refinement. There's a hard minimum
+        of 256 ** 2. Default: *512 ** 2*
+    :return out:
+        - out[0]: Success flag.
+
+        - out[1]: A (palette_size, 3) array describing the generated color palette in *sRGB[0, 1]* space.
+            The array entries may not all be relveant, e.g *width* * *height* < *palette_size*. Non-relevant
+            entries take the value of an out-of-range *sRGB* color, i.e [-1, -1, -1].
+
+        - out[2]: A (width * height) array mapping each entry in *colors* to an entry in *out[1]*.
+        
+        - out[3]: A success / error message.
     """

@@ -4,7 +4,7 @@
 #include<Accelerate/Accelerate.h>
 #else
 #include<cblas.h>
-#include<lapack.h>
+#include"math/lapack.h"
 #endif
 
 #ifdef PATOLETTE_USE_ACCELERATE

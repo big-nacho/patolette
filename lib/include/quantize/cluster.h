@@ -51,6 +51,9 @@ struct patolette__ColorCluster {
     -----------------------------------------------------------------------------*/
     patolette__IndexArray *indices;
 
+    // The weight of each color
+    patolette__Vector  *weights;
+
     // Size of the cluster, matches the length of indices
     size_t size;
 
@@ -58,16 +61,26 @@ struct patolette__ColorCluster {
     // This property is not owned by the cluster, and so
     // it must be destroyed separately
     const patolette__Matrix2D  *dataset__NOTOWNED__;
+
+    // The weights of each sample in the dataset
+    // This property is not owned by the cluster, and so
+    // it must be destroyed separately
+    const patolette__Vector  *dataset_weights__NOTOWNED__;
 };
 
 void patolette__ColorCluster_destroy(patolette__ColorCluster *cluster);
 patolette__ColorCluster *patolette__ColorCluster_init(
     const patolette__Matrix2D *dataset,
+    const patolette__Vector *weights,
     patolette__IndexArray *indices
 );
 
+const patolette__Vector *patolette__ColorCluster_get_weights(patolette__ColorCluster *cluster);
 double patolette__ColorCluster_get_distortion(patolette__ColorCluster *cluster);
 double patolette__ColorCluster_get_variance(patolette__ColorCluster *cluster);
 const patolette__Vector *patolette__ColorCluster_get_center(patolette__ColorCluster *cluster);
 const patolette__Vector *patolette__ColorCluster_get_principal_axis(patolette__ColorCluster *cluster);
 const patolette__Matrix2D *patolette__ColorCluster_get_colors(patolette__ColorCluster *cluster);
+
+// TODO: refactor, weird placement
+void patolette__ColorClusterArray_destroy_deep(patolette__ColorClusterArray *array);

@@ -1,10 +1,14 @@
 .DS_Store
 .venv
+.vscode
+.tmp_venv
 .idea
 .pytest_cache
 cmake-build-debug
 dist
 build
+wheelhouse
+tmp
 out
 test
 tests

@@ -38,6 +38,7 @@ static patolette__IndexArray *l_chain(
 
 static patolette__ColorClusterArray *get_color_clusters(
     const patolette__Matrix2D *colors,
+    const patolette__Vector *weights,
     const patolette__IndexArray *quantizer,
     const patolette__IndexArray *bucket_map
 );
@@ -57,12 +58,6 @@ static bool should_terminate(
 static patolette__IndexArray *get_principal_quantizer(
     size_t palette_size,
     const patolette__CellMomentsCache *cache
-);
-
-static patolette__ColorClusterArray *get_color_clusters(
-    const patolette__Matrix2D *colors,
-    const patolette__IndexArray *quantizer,
-    const patolette__IndexArray *bucket_map
 );
 
 /*----------------------------------------------------------------------------
@@ -246,7 +241,7 @@ static patolette__IndexArray *get_principal_quantizer(
 
     patolette__IndexArray *result = l_chain(L, 1, N);
 
-    for (size_t k = 2; k <= max_k; k++) {
+    for (size_t k = 2; k <= min(max_k, palette_size); k++) {
         if (
             should_terminate(
                 result,
@@ -304,6 +299,7 @@ static patolette__IndexArray *get_principal_quantizer(
 
 static patolette__ColorClusterArray *get_color_clusters(
     const patolette__Matrix2D *colors,
+    const patolette__Vector *weights,
     const patolette__IndexArray *quantizer,
     const patolette__IndexArray *bucket_map
 ) {
@@ -367,6 +363,7 @@ static patolette__ColorClusterArray *get_color_clusters(
         patolette__IndexArray *indices = patolette__IndexMatrix2D_index(clusters_indices, i);
         patolette__ColorClusterArray_index(clusters, i) = patolette__ColorCluster_init(
             colors,
+            weights,
             indices
         );
     }
@@ -390,6 +387,7 @@ static patolette__ColorClusterArray *get_color_clusters(
 
 patolette__ColorClusterArray *patolette__GQ_quantize(
     const patolette__Matrix2D *colors,
+    const patolette__Vector *weights,
     size_t palette_size
 ) {
 /*----------------------------------------------------------------------------
@@ -397,6 +395,7 @@ patolette__ColorClusterArray *patolette__GQ_quantize(
 
     @params
     colors - The color set.
+    weights - Weight of each color in the color set.
     palette_size - The desired palette size.
 
     @note
@@ -405,7 +404,7 @@ patolette__ColorClusterArray *patolette__GQ_quantize(
 -----------------------------------------------------------------------------*/
     patolette__ColorClusterArray *result = NULL;
 
-    patolette__PCA *pca = patolette__PCA_perform_PCA(colors);
+    patolette__PCA *pca = patolette__PCA_perform_PCA(colors, NULL);
     if (pca == NULL) {
         return result;
     }
@@ -417,9 +416,9 @@ patolette__ColorClusterArray *patolette__GQ_quantize(
     );
     
     patolette__CellMomentsCache *cache = patolette__CELLS_preprocess(
-            colors,
-            bucket_map,
-            bucket_count
+        colors,
+        bucket_map,
+        bucket_count
     );
 
     patolette__IndexArray *quantizer = get_principal_quantizer(
@@ -430,6 +429,7 @@ patolette__ColorClusterArray *patolette__GQ_quantize(
     if (quantizer != NULL) {
         result = get_color_clusters(
             colors,
+            weights,
             quantizer,
             bucket_map
         );
