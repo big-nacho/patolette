@@ -12,10 +12,11 @@ def quantize(
     palette_size: int,
     dither: Optional[bool],
     palette_only: Optional[bool],
-    color_space: Optional[ColorSpace_CIELuv, ColorSpace_ICtCp],
+    color_space: Optional[int],
     tile_size: Optional[float],
     kmeans_niter: Optional[int],
-    kmeans_max_samples: Optional[int]
+    kmeans_max_samples: Optional[int],
+    verbose: Optional[bool]
 ) -> int:
     """
     Quantizes color data.
@@ -48,6 +49,8 @@ def quantize(
     :param kmeans_max_samples:
         Maximum number of samples to use when performing KMeans refinement. There's a hard minimum
         of 256 ** 2. Default: *512 ** 2*
+    :param verbose:
+        Whether to print progress to console. Default: *false*
     :return out:
         - out[0]: Success flag.
 
