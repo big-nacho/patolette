@@ -141,7 +141,8 @@ patolette__QuantizationOptions *patolette_create_default_options() {
  *  - kmeans_niter: Number of KMeans refinement iterations to perform. Anything <= 0 yields no KMeans
                     refinement.
  *  - kmeans_max_samples: Maximum number of samples to use when performing KMeans refinement. There's
- *                        a hard minimum of 256 ** 2.              
+ *                        a hard minimum of 256 ** 2.
+ *  - verbose: Whether to print progress to the console.
  * @param palette_map A previously allocated array of length width * height.
  *                    The palette map is written here.
  * @param palette A previously allocated (palette_size, 3) matrix.
