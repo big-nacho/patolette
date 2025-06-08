@@ -76,7 +76,7 @@ static void kmeans(
     faiss_ClusteringParameters_init(&params);
     params.niter = niter;
     params.nredo = 1;
-    params.verbose = true;
+    params.verbose = false;
     params.spherical = false;
     params.int_centroids = false;
     params.update_index = false;
