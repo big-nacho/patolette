@@ -23,8 +23,13 @@ A **PyPI** package is not yet available. Until then, installation is manual, but
 
 If you do face any obstacles building / installing, please submit an issue! 🙏
 
- **Note for x86**\
-*patolette* ships a slightly modified version of [faiss](https://github.com/facebookresearch/faiss) to aid with an optional *KMeans* refinement step. You can use the `pyproject.toml` file to specify an instruction set extension for it to be built with. If your CPU supports any of the **AVX** extensions, you can drastically increase *KMeans* performance.
+ ### Note for x86
+*patolette* ships a slightly modified version of [faiss](https://github.com/facebookresearch/faiss) to aid with an optional *KMeans* refinement step. You can use the `CMAKE_ARGS` environment variable to specify an instruction set extension for it to be built with. If your CPU supports any of the **AVX** extensions, you can drastically increase *KMeans* performance.
+
+For example, if your CPU supports **AVX512**
+```shell
+export CMAKE_ARGS="-DOPT_LEVEL=avx512"
+```
 
 The following will build the wheel and install it in the currently active virtual environment.
 
@@ -37,6 +42,10 @@ cd patolette
 
 # Install dependencies
 apt install libopenblas-openmp-dev libflann-dev
+
+# Optional: set OPT_LEVEL (check Note for x86 section)
+# Accepted values are "generic", "avx2", "avx512", "avx512_spr", "sve"
+export CMAKE_ARGS="-DOPT_LEVEL=avx512"
 
 # Build and install wheel
 pip install .
