@@ -80,7 +80,7 @@ pip install .
 ### Windows
 Windows is of course a world of pain (but hey, no judgement if you're into that sort of thing ⛓️).
 
-Small note: **MSVC** doesn't like building *faiss* with **AVX512**. Stick to **AVX2** if you're building with an instruction set extension on. If you don't know what I'm talking about check **Note on x86**.
+Small note: **MSVC** doesn't like building *faiss* with **AVX512**. Stick to **AVX2** if you're building with an instruction set extension on. If you don't know what I'm talking about check [Note for x86](#note-for-x86)
 
 The following may vary for you here and there, but mostly you should be able to build and install the wheel following these steps.
 
