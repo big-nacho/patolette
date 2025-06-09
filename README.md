@@ -14,7 +14,7 @@ Some of its key features are:
 - Avoids axis-aligned subdivisions.
 - Supports the **CIEL\*u\*v\*** and **ICtCp** color spaces.
 - Optional use of saliency maps to give higher weight to areas that stand out visually.
-- Optional, blazing fast *KMeans* refinement.
+- Optional *KMeans* refinement.
 
 The library is still in need of a ton of improvements and most definitely not ready for production use, but it's already very usable.
 
@@ -121,7 +121,7 @@ pip install build
 python -m build
 ```
 
-Now, you can't just install that wheel, because `dlls` won't be found at runtime. You need to repair it first. The following will repair and install the built wheel in your currently active virtual environment.
+Now, you can't just install that wheel, because *.dll* files` won't be found at runtime. You need to repair it first. The following will repair and install the built wheel in your currently active virtual environment.
 
 ```powershell
 
