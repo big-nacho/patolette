@@ -84,7 +84,7 @@ Small note: **MSVC** doesn't like building `faiss` with **AVX512**. Stick to **A
 
 The following may vary for you here and there, but mostly you should be able to build and install the wheel following these steps.
 
-First, you need `pkg-config` or `CMake` won't find `flann`.
+First, you need `pkg-config` or CMake won't find `flann`.
 You can get it [here](https://sourceforge.net/projects/pkgconfiglite/files/) or you can install `pkgconfiglite` using [choco](https://chocolatey.org/) (that's what I did).
 
 Then you need to get `flann` and `OpenBLAS`. You can do this in a variety of ways but an easy one is to use `conda`. You can get (Mini)conda [here](https://www.anaconda.com/docs/getting-started/miniconda/install).
@@ -101,7 +101,7 @@ echo %CONDA_PREFIX%
 
 `CONDA_PREFIX` will give you the prefix for your conda installation, keep it around.
 
-Following that, this will build the wheel and place it inside a `dist` folder.
+Following that, this will build the wheel and place it inside a *dist* folder.
 
 ```powershell
 # Clone repository
@@ -132,7 +132,7 @@ pip install delvewheel
 delvewheel repair --add-path {CONDA_PREFIX}\\Library\\bin dist\\*.whl
 
 # Install repaired wheel
-pip install wheelhouse/*.whl
+pip install wheelhouse\\{WHEEL_NAME}.whl
 ```
 
 ## Basic Usage
@@ -163,6 +163,8 @@ success, palette, palette_map, message = quantize(
     height,
     colors,
     256,
+    # If you want progress console output
+    verbose=True,
     # The following are all defaults
     dither=True,
     palette_only=False,
