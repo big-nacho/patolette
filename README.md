@@ -121,7 +121,7 @@ pip install build
 python -m build
 ```
 
-Now, you can't just install that wheel, because *.dll* files` won't be found at runtime. You need to repair it first. The following will repair and install the built wheel in your currently active virtual environment.
+Now, you can't just install that wheel, because *.dll* files won't be found at runtime. You need to repair it first. The following will repair and install the built wheel in your currently active virtual environment.
 
 ```powershell
 
