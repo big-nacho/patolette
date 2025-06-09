@@ -129,7 +129,7 @@ Now, you can't just install that wheel, because `dlls` won't be found at runtime
 pip install delvewheel
 
 # Repair wheel
-delvewheel repair --add-path {CONDA_PREFIX}/Library/bin dist/*.whl
+delvewheel repair --add-path {CONDA_PREFIX}\\Library\\bin dist\\*.whl
 
 # Install repaired wheel
 pip install wheelhouse/*.whl
