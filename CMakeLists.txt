@@ -100,11 +100,20 @@ if (APPLE)
   target_link_libraries(patolette PRIVATE ${ACCELERATE_FRAMEWORK})
   target_compile_definitions(patolette PRIVATE ACCELERATE_NEW_LAPACK)
   target_compile_definitions(patolette PRIVATE PATOLETTE_USE_ACCELERATE)
-else()
+elseif (LINUX)
   set(BLA_VENDOR "OpenBLAS")
 
   find_package(BLAS REQUIRED)
   target_link_libraries(patolette PRIVATE BLAS::BLAS)
+
+  find_package(LAPACK REQUIRED)
+  target_link_libraries(patolette PRIVATE LAPACK::LAPACK)
+else()
+  # Need to unify this with the above
+  # This block was tested on Windows with OpenBLAS installed
+  # in a conda environment.
+  find_package(OpenBLAS REQUIRED)
+  target_link_libraries(patolette PRIVATE OpenBLAS::OpenBLAS)
 
   find_package(LAPACK REQUIRED)
   target_link_libraries(patolette PRIVATE LAPACK::LAPACK)
