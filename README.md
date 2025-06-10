@@ -11,15 +11,15 @@
 At its core, it implements a weighted variant of Xiaolin Wu's PCA-based quantizer (not to be confused with the popular one from _Graphics Gems vol. II_, which is already available [here](https://gist.github.com/bert/1192520)).
 
 Some of its key features are:
-- Avoids axis-aligned subdivisions.
-- Supports the **CIEL\*u\*v\*** and **ICtCp** color spaces.
-- Optional use of saliency maps to give higher weight to areas that stand out visually.
-- Optional *KMeans* refinement.
+- Avoids axis-aligned subdivisions
+- Supports the **CIEL\*u\*v\*** and **ICtCp** color spaces
+- Optional use of saliency maps to give higher weight to areas that stand out visually
+- Optional *KMeans* refinement
 
-The library is still in need of a ton of improvements and most definitely not ready for production use, but it's already very usable.
+The library is still in need of a ton of improvements and most definitely not ready for production use, but it's already very useable.
 
 ## Installation
-A **PyPI** package is not yet available. Until then, installation is manual, but it should hopefully be painless 🤞
+A **PyPI** package is not yet available. Until then, installation is manual but it should hopefully be painless 🤞
 
 If you do face any obstacles building / installing, please submit an issue! 🙏
 
@@ -82,7 +82,7 @@ Windows is of course a world of pain (but hey, no judgement if you're into that 
 
 Small note: **MSVC** doesn't like building `faiss` with **AVX512**. Stick to **AVX2** if you're building with an instruction set extension on, at least until that's fixed. If you don't know what I'm talking about check [Note for x86](#note-for-x86).
 
-The following may vary for you here and there, but mostly you should be able to build and install the wheel following these steps.
+The following may vary for you here and there, but mostly you should be able to build and install the wheel following these steps:
 
 First, you need `pkg-config` or CMake won't find `flann`.
 You can get it [here](https://sourceforge.net/projects/pkgconfiglite/files/) or you can install `pkgconfiglite` using [choco](https://chocolatey.org/) (that's what I did).
@@ -99,9 +99,9 @@ conda install conda-forge::openblas conda-forge::flann
 echo %CONDA_PREFIX%
 ```
 
-`CONDA_PREFIX` will give you the prefix for your conda installation, keep it around.
+`CONDA_PREFIX` will give you the prefix for your conda installation. Keep it around.
 
-Following that, this will build the wheel and place it inside a *dist* folder.
+After that, the following will build the wheel and place it inside a *dist* folder.
 
 ```powershell
 # Clone repository
@@ -121,7 +121,7 @@ pip install build
 python -m build
 ```
 
-Now, you can't just install that wheel, because *.dll* files won't be found at runtime. You need to repair it first. The following will repair and install the built wheel in your currently active virtual environment.
+Now, you can't just install that wheel, because *.dll* files won't be found at runtime. First you need to repair it. The following will repair and install the built wheel in your currently active virtual environment.
 
 ```powershell
 
@@ -192,13 +192,13 @@ quantized.save('result.png')
 ```
 
 ## Color Spaces
-Three different color spaces are supported for the palette generation step. The following are rules of thumb you can go by, but experiment and see what works best for you:
+Three different color spaces are supported for the palette generation step. The following are rules of thumb you can go by, but experiment and see what works best for you.
 
-**CIEL\*u\*v\***: generates exceptionally high quality color palettes and it's the best choice for very low color counts. However, it creates the least smooth results, and performs poorly on some hues.
+**CIEL\*u\*v\***: generates exceptionally high quality color palettes and it's the best choice for very low color counts. However, it creates the least smooth results and performs poorly on some hues.
 
 **sRGB**: outputs relatively smooth results (and it's the most consistent in this regard) but it generates the lowest quality color palettes and it's not that well suited for lower color counts.
 
-**ICtCp** (default): a good tradeoff between the two former. Generally, it generates slightly smoother results than **sRGB**, but it's a little bit less consistent at that, and the quality of the color palettes it generates is quite good.
+**ICtCp** (default): a good tradeoff between the two former. Generally, it generates slightly smoother results than **sRGB**, but it's a little bit less consistent, and the quality of the color palettes it generates is quite good.
 
 ## Tile Size
 *patolette* optimizes against size-weighted variance during the palette generation stage (the same way *KMeans* and other quantizers of similar nature do). This however comes with the known issue of large clusters dominating small, well defined ones.
@@ -226,8 +226,6 @@ The main priority for `v1` is to reduce memory consumption, at the moment it is 
 </p>
 
 ### Speed
-It's "slow".
-
 It's not nearly as fast as it could be yet, but will most likely stay slow compared to fast methods like median cut / octree, etc. Below is a chart with execution times for some resolutions, quantizing to 256 colors (ICtCp), *with* saliency maps and dithering on. Testing was performed on an 11 core Apple M3 Pro CPU.
 
 <p align="center">
