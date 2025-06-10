@@ -1,6 +1,13 @@
 #ifndef LAPACK_H
 #define LAPACK_H
 
+#if defined(_MSC_VER)
+    #include <complex.h>
+    #define LAPACK_COMPLEX_CUSTOM
+    #define lapack_complex_float _Fcomplex
+    #define lapack_complex_double _Dcomplex
+#endif
+
 /*
 *  Turn on HAVE_LAPACK_CONFIG_H to redefine C-LAPACK datatypes
 */

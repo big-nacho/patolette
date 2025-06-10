@@ -14,9 +14,9 @@ Some of its key features are:
 - Avoids axis-aligned subdivisions.
 - Supports the **CIEL\*u\*v\*** and **ICtCp** color spaces.
 - Optional use of saliency maps to give higher weight to areas that stand out visually.
-- Optional, blazing fast *KMeans* refinement.
+- Optional *KMeans* refinement.
 
-The library is at its very early stages and in need of battle-testing and improvements, but it's already very usable.
+The library is still in need of a ton of improvements and most definitely not ready for production use, but it's already very usable.
 
 ## Installation
 A **PyPI** package is not yet available. Until then, installation is manual, but it should hopefully be painless 🤞
@@ -77,6 +77,64 @@ export OpenMP_ROOT=$(brew --prefix)/opt/libomp
 pip install .
 ```
 
+### Windows
+Windows is of course a world of pain (but hey, no judgement if you're into that sort of thing ⛓️).
+
+Small note: **MSVC** doesn't like building `faiss` with **AVX512**. Stick to **AVX2** if you're building with an instruction set extension on, at least until that's fixed. If you don't know what I'm talking about check [Note for x86](#note-for-x86).
+
+The following may vary for you here and there, but mostly you should be able to build and install the wheel following these steps.
+
+First, you need `pkg-config` or CMake won't find `flann`.
+You can get it [here](https://sourceforge.net/projects/pkgconfiglite/files/) or you can install `pkgconfiglite` using [choco](https://chocolatey.org/) (that's what I did).
+
+Then you need to get `flann` and `OpenBLAS`. You can do this in a variety of ways but an easy one is to use `conda`. You can get (Mini)conda [here](https://www.anaconda.com/docs/getting-started/miniconda/install).
+
+With `conda` installed, open *Anaconda Prompt* and type
+
+```bash
+# Install dependencies
+conda install conda-forge::openblas conda-forge::flann
+
+# Get conda prefix
+echo %CONDA_PREFIX%
+```
+
+`CONDA_PREFIX` will give you the prefix for your conda installation, keep it around.
+
+Following that, this will build the wheel and place it inside a *dist* folder.
+
+```powershell
+# Clone repository
+git clone https://github.com/big-nacho/patolette.git
+cd patolette
+
+# If CONDA_PREFIX = C:\miniconda3 then replace with C:\\miniconda3 (use double backslashes)
+$env:CMAKE_ARGS = "-DCMAKE_PREFIX_PATH={CONDA_PREFIX}\\Library"
+
+# Optional: set OPT_LEVEL (check Note for x86 section)
+$env:CMAKE_ARGS = $env:CMAKE_ARGS + " " + "-DOPT_LEVEL=avx2"
+
+# Install build module
+pip install build
+
+# Build wheel
+python -m build
+```
+
+Now, you can't just install that wheel, because *.dll* files won't be found at runtime. You need to repair it first. The following will repair and install the built wheel in your currently active virtual environment.
+
+```powershell
+
+# Install delvewheel
+pip install delvewheel
+
+# Repair wheel
+delvewheel repair --add-path {CONDA_PREFIX}\\Library\\bin dist\\*.whl
+
+# Install repaired wheel
+pip install wheelhouse\\{WHEEL_NAME}.whl
+```
+
 ## Basic Usage
 The library doesn't take care of image decoding / encoding. You need to do that yourself. In the below example the [Pillow](https://pillow.readthedocs.io/en/stable/) library is used, but you can use whatever you want.
 
@@ -105,6 +163,8 @@ success, palette, palette_map, message = quantize(
     height,
     colors,
     256,
+    # If you want progress console output
+    verbose=True,
     # The following are all defaults
     dither=True,
     palette_only=False,
@@ -163,6 +223,15 @@ The main priority for `v1` is to reduce memory consumption, at the moment it is 
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/7c2800cd-9334-431c-89aa-e29548346c0c" style="width:100%;" />
+</p>
+
+### Speed
+It's "slow".
+
+It's not nearly as fast as it could be yet, but will most likely stay slow compared to fast methods like median cut / octree, etc. Below is a chart with execution times for some resolutions, quantizing to 256 colors (ICtCp), *with* saliency maps and dithering on. Testing was performed on an 11 core Apple M3 Pro CPU.
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/b34d55cc-3778-4f90-a688-f81e8c5c8077" style="width:100%;" />
 </p>
 
 ### Using From C
