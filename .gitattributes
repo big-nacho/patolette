@@ -1,1 +1,2 @@
 lib/faiss/** linguist-vendored
+lib/include/math/** linguist-vendored
