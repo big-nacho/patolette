@@ -238,6 +238,13 @@ Until `v1` is ready, the C API is incomplete. Mainly, support for weighted quant
 ### No RGBA support
 For the time being, images with transparency are not supported, though if you have the pretty common use case of subject + fully transparent background, you can always fake it yourself by using a mask, but results may not be optimal.
 
+### ⚠️ Legal Notice ⚠️
+This software includes material covered by U.S. Patent No. US9454712B2, owned by ADOBE INC.
+The BSD-3-Clause License granted with this software does NOT include any express or implied license to the above patent.
+Users are advised that while personal, academic, or research use may be permitted, commercial use of this software or its technology may require obtaining a patent license from the patent holder.
+
+Please review the applicable patent rights and obtain any necessary licenses before using this software for commercial purposes.
+
 ## Acknowledgements
 This library stands on the following works / projects.
 
